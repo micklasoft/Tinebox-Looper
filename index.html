@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tinebox Loop">
+<title>Tinebox Loop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Doto:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --body:#E2E4E0; --body-2:#D3D6D1; --panel:#EDEEEA; --line:#C6CAC3; --key:#FFFFFF; --key-edge:#B5BAB2; --key-down:#E9EEF8;
+  --ink:#1A1E21; --ink-2:#5E666B; --screen:#000; --scr-ink:#DDF1FF; --scr-dim:#7B95A3;
+  --rec:#D5362B; --go:#2E66D6; --ok:#2F8A5E; --warn:#B9791A; --syn:#7A5BD0; --drm:#C9602E; --gtr:#2E66D6; --focus:#2E66D6;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --body:#1C1F21; --body-2:#141719; --panel:#25292B; --line:#3A4043; --key:#32373A; --key-edge:#0E1012; --key-down:#2A3240; --ink:#E8EBE7; --ink-2:#A0A7A3; --scr-dim:#6F8A99; --go:#5B8CF0; --gtr:#5B8CF0; --syn:#9A80EA; color-scheme:dark; }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%}
+body{height:100%;margin:0;color:var(--ink);background:var(--body);font-family:'Barlow Semi Condensed','Arial Narrow',system-ui,sans-serif;font-size:16px;line-height:1.3;
+  overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+select,input{font:inherit;font-size:16px;color:var(--ink)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+#app{height:100%;display:flex;flex-direction:column;max-width:640px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 0}
+.panel{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:6px 0 12px;-webkit-overflow-scrolling:touch}
+.dot{font-family:'Doto',ui-monospace,monospace;font-weight:900}
+
+/* the screen: state, section, position */
+.screen{flex:none;background:var(--screen);color:var(--scr-ink);border-radius:14px;padding:10px 14px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px}
+#scState{font-size:22px;font-weight:700;line-height:1.15;min-height:26px}
+#scSmall{grid-column:1/3;font-size:14px;color:var(--scr-dim);min-height:18px}
+#scPos{font-size:30px;line-height:1;align-self:center;text-align:right;white-space:nowrap}
+#scPos.rec{color:#ff6a5e}
+.ring{grid-column:1/3;height:6px;border-radius:3px;background:#1A2025;overflow:hidden;margin-top:6px;position:relative}
+.ring i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--scr-ink);opacity:.8}
+.chips{grid-column:1/3;display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:13px}
+.chip{border:1px solid #2C353B;border-radius:999px;padding:1px 8px;color:var(--scr-dim)}
+.chip.on{color:var(--scr-ink);border-color:var(--scr-ink)}
+.chip.bad{color:#ff8a7e;border-color:#ff8a7e}
+
+/* tabs */
+.tabs{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 0 calc(env(safe-area-inset-bottom,0px) + 6px);border-top:1px solid var(--line);background:var(--body)}
+.tabs button{border:0;background:transparent;border-radius:10px;padding:8px 2px;font-size:15px;font-weight:600;color:var(--ink-2)}
+.tabs button[aria-selected="true"]{background:var(--panel);color:var(--ink)}
+
+/* switches: the footswitch mirrored on screen */
+.sw{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.sw button{min-height:68px;border-radius:14px;border:1px solid var(--key-edge);background:var(--key);box-shadow:0 2px 0 var(--key-edge);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px}
+.sw button:active{transform:translateY(1px);box-shadow:0 1px 0 var(--key-edge);background:var(--key-down)}
+.sw b{font-size:17px}
+.sw small{font-size:12px;color:var(--ink-2)}
+.sw button.flash{background:var(--key-down)}
+.sw button.on{border-color:var(--rec);box-shadow:0 2px 0 var(--rec);color:var(--rec)}
+.sw .n{font-size:11px;color:var(--ink-2);font-weight:700}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:10px 0}
+.card h3{margin:0 0 6px;font-size:17px}
+.note{font-size:14px;color:var(--ink-2);margin:6px 0}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0}
+.row .lbl{flex:1;min-width:120px}
+.btn{border:1px solid var(--key-edge);background:var(--key);border-radius:10px;padding:7px 12px;font-weight:600;font-size:15px}
+.btn.sm{padding:4px 9px;font-size:14px}
+.btn.pri{background:var(--go);border-color:var(--go);color:#fff}
+.btn.rec{background:var(--rec);border-color:var(--rec);color:#fff}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--body);border-color:var(--ink)}
+select{border:1px solid var(--key-edge);background:var(--key);border-radius:8px;padding:5px 8px}
+input[type=range]{flex:1;min-width:120px}
+
+/* layers */
+.layer{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.layer:first-of-type{border-top:0}
+.ltag{font-size:12px;font-weight:700;color:#fff;border-radius:6px;padding:2px 7px}
+.ltag.gtr{background:var(--gtr)} .ltag.syn{background:var(--syn)} .ltag.drm{background:var(--drm)}
+.lst{font-size:14px;color:var(--ink-2)}
+.lst.pend{color:var(--warn);font-weight:700}
+.lst.tape{color:var(--ok)}
+.lact{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.lopt{grid-column:2/4;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* pads */
+.pads{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
+.pad{aspect-ratio:1/0.85;border-radius:16px;border:1px solid var(--key-edge);background:var(--key);box-shadow:0 3px 0 var(--key-edge);font-size:17px;font-weight:700;touch-action:none}
+.pad.hit{background:var(--key-down);transform:translateY(2px);box-shadow:0 1px 0 var(--key-edge)}
+
+/* sections */
+.sec{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center}
+.sec .let{font-size:30px;line-height:1;width:40px;text-align:center}
+.sec.cur{outline:2px solid var(--go);outline-offset:-1px}
+.sec .sum{font-size:14px;color:var(--ink-2)}
+.sec .acts{grid-column:1/4;display:flex;gap:6px;flex-wrap:wrap}
+
+/* count-in and test banner */
+.count-big{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Doto',ui-monospace,monospace;font-weight:900;font-size:40vw;color:var(--rec);pointer-events:none;z-index:40;text-shadow:0 0 30px rgba(0,0,0,.25)}
+.banner{position:fixed;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 64px);z-index:50;background:#111;color:#F3F5F2;border-radius:16px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none;max-width:624px;margin:0 auto}
+.banner b{display:block;font-size:22px;line-height:1.2}
+.banner span{display:block;font-size:15px;color:#C9D2D6;margin-top:4px}
+.banner .bt{font-family:'Doto',ui-monospace,monospace;font-weight:900;font-size:26px;color:#9fd1ff;margin-top:6px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 70px);background:var(--ink);color:var(--body);padding:9px 14px;border-radius:12px;font-size:15px;z-index:60;max-width:92vw;pointer-events:none;opacity:0;transition:opacity .2s}
+#toast.on{opacity:1}
+.diag{position:fixed;inset:0;background:var(--body);z-index:45;overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 120px}
+.diag .wrap{max-width:640px;margin:0 auto}
+.diag h2{margin:4px 0 8px}
+.dgres{font-size:14px;white-space:pre-wrap;color:var(--ink-2);margin:6px 0;font-family:ui-monospace,Menlo,monospace}
+.meterbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;flex:1;min-width:100px}
+.meterbar i{display:block;height:100%;width:0;background:var(--ok)}
+textarea.copy{width:100%;height:120px;font-size:12px}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#1A1E21">
+</head>
+<body>
+<div id="app">
+  <div class="screen" aria-live="polite">
+    <div id="scState">Tinebox Loop</div>
+    <div id="scPos" class="dot">–</div>
+    <div id="scSmall">Connect the TP-7 (Settings), then tap switch 6 four times for a session.</div>
+    <div class="ring" aria-hidden="true"><i id="scRing"></i></div>
+    <div class="chips" id="scChips"></div>
+  </div>
+  <main class="panel" id="pLoop"></main>
+  <main class="panel" id="pPads" hidden></main>
+  <main class="panel" id="pSecs" hidden></main>
+  <main class="panel" id="pSet" hidden></main>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="Loop" aria-selected="true">Loop</button>
+    <button role="tab" data-tab="Pads" aria-selected="false">Pads</button>
+    <button role="tab" data-tab="Secs" aria-selected="false">Sections</button>
+    <button role="tab" data-tab="Set" aria-selected="false">Settings</button>
+  </nav>
+</div>
+<div id="toast" role="status"></div>
+<script>
+// Guitar to synth DSP for Tinebox Loop. One self-contained factory, so the same code runs in the audio worklet (live preview),
+// in a worker (the exact version printed to tape) and in Node (offline tests). No DOM, no Web Audio.
+function GDSP(){
+'use strict';
+const TAU=2*Math.PI, mtof=m=>440*Math.pow(2,(m-69)/12), ftom=f=>69+12*Math.log2(f/440);
+
+function fft(re,im){ const n=re.length;
+  for(let i=1,j=0;i<n;i++){ let b=n>>1; for(;j&b;b>>=1) j^=b; j^=b; if(i<j){ let t=re[i]; re[i]=re[j]; re[j]=t; t=im[i]; im[i]=im[j]; im[j]=t; } }
+  for(let len=2;len<=n;len<<=1){ const a=-TAU/len, wr=Math.cos(a), wi=Math.sin(a), h=len>>1;
+    for(let i=0;i<n;i+=len){ let cr=1, ci=0; for(let k=0;k<h;k++){ const p=i+k, q=p+h, tr=re[q]*cr-im[q]*ci, ti=re[q]*ci+im[q]*cr; re[q]=re[p]-tr; im[q]=im[p]-ti; re[p]+=tr; im[p]+=ti; const nr=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=nr; } } } }
+
+// ------------------------------------------------------------------ decimation to about 24 kHz
+// a 4th-order Butterworth low-pass (two biquads) at 9.5 kHz, then every D-th sample
+function Decim(srIn){ const D=Math.max(1,Math.round(srIn/24000)); this.D=D; this.sr=srIn/D; this.ph=0; this.z=new Float64Array(8);
+  const fc=Math.min(9500,0.4*this.sr), w0=TAU*fc/srIn, cw=Math.cos(w0), sw=Math.sin(w0);
+  this.c=[0.5412,1.3066].map(Q=>{ const al=sw/(2*Q), a0=1+al; return [(1-cw)/2/a0,(1-cw)/a0,(1-cw)/2/a0,-2*cw/a0,(1-al)/a0]; }); }
+Decim.prototype.run=function(x,n,out,o){ const D=this.D, z=this.z, c=this.c; let k=o;
+  if(D===1){ for(let i=0;i<n;i++) out[k++]=x[i]; return k-o; }
+  for(let i=0;i<n;i++){ let v=x[i];
+    for(let s=0;s<2;s++){ const b=c[s], j=4*s, y=b[0]*v+b[1]*z[j]+b[2]*z[j+1]-b[3]*z[j+2]-b[4]*z[j+3]; z[j+1]=z[j]; z[j]=v; z[j+3]=z[j+2]; z[j+2]=y; v=y; }
+    if(this.ph===0) out[k++]=v; this.ph=(this.ph+1)%D; }
+  return k-o; };
+
+// ------------------------------------------------------------------ the multi-pitch tracker: which notes sound now, and how loud
+// Per frame: spectral peaks (parabolic interpolation on the log magnitude), then pitches one at a time by harmonic salience (the sum of
+// weighted peaks at the harmonics of each candidate, weights after Klapuri 2006), each found pitch taking its share of its harmonics
+// out of the spectrum (spectral smoothness: at most the average of its neighbouring harmonics), until what is left is too weak.
+function Tracker(sr,N,o){ o=o||{}; this.sr=sr; this.N=N; this.mMin=o.mMin||38; this.mMax=o.mMax||90; this.poly=o.poly||6; this.rel=o.rel==null?0.16:o.rel; this.floor=o.floor||0.00004;
+  const w=this.w=new Float64Array(N), skew=o.skew||0; // skew: 0 symmetric Hann; 0.75: rises over 3/4 and falls over the last 1/4 (less delay, live)
+  if(!skew){ for(let i=0;i<N;i++) w[i]=0.5-0.5*Math.cos(TAU*i/(N-1)); }
+  else { const R=Math.round(N*skew), F=N-R; for(let i=0;i<R;i++) w[i]=0.5-0.5*Math.cos(Math.PI*i/R); for(let i=0;i<F;i++) w[R+i]=0.5+0.5*Math.cos(Math.PI*i/F); }
+  let s=0; for(let i=0;i<N;i++) s+=w[i]; this.ws=s; this.re=new Float64Array(N); this.im=new Float64Array(N); this.mag=new Float64Array(N>>1);
+  this.k0=Math.max(2,Math.floor(55*N/sr)); this.k1=Math.min((N>>1)-2,Math.floor(Math.min(6000,0.45*sr)*N/sr));
+  this.delay=skew?(N-Math.round(N*skew))/sr:N/2/sr; // how far the frame's weight sits before its end
+  this.Pf=new Float64Array(512); this.Pa=new Float64Array(512); this.Pr=new Float64Array(512); this.np=0; }
+const KW=(h)=>1/Math.pow(h,0.35);
+Tracker.prototype.peaks=function(){ const m=this.mag, sr=this.sr, N=this.N, sc=2/this.ws; let mx=0;
+  for(let k=this.k0;k<=this.k1;k++) if(m[k]>mx) mx=m[k];
+  const thr=Math.max(this.floor/sc,mx*0.0032); let n=0; // peaks within 50 dB of the strongest
+  for(let k=this.k0+1;k<this.k1&&n<512;k++){ const v=m[k]; if(v>thr&&v>m[k-1]&&v>=m[k+1]){ const a=Math.log(m[k-1]+1e-12), b=Math.log(v+1e-12), c=Math.log(m[k+1]+1e-12), den=a-2*b+c, d=den<0?0.5*(a-c)/den:0, dd=Math.max(-0.5,Math.min(0.5,d));
+      this.Pf[n]=(k+dd)*sr/N; this.Pa[n]=Math.exp(b-0.25*(a-c)*dd)*sc; n++; } }
+  this.np=n; return mx*sc; };
+// the salience of f0 over the residual peaks, and which peak each harmonic took. Mild weights (1/h^0.35) so a low string's many
+// harmonics outweigh its 4th harmonic taken as a note; a candidate missing many of its first 6 harmonics is scaled down (that rules
+// out sub-octaves); a low candidate (under 140 Hz) needs its own fundamental, so a chord's common sub-harmonic is not taken as a note
+Tracker.prototype.sal=function(f0,take){ const P=this.Pf, A=this.Pr, n=this.np; let s=0, cnt=0, lo=0, h1=0, mx=0, f6=0;
+  const H=Math.min(12,Math.floor(Math.min(5000,0.45*this.sr)/f0)), H6=Math.min(6,H);
+  for(let h=1;h<=H;h++){ const t=h*f0, tol=t*(Math.pow(2,(30+4*h)/1200)-1); while(lo<n&&P[lo]<t-tol) lo++; let best=-1, bd=1e9;
+    for(let j=lo;j<n&&P[j]<=t+tol;j++){ const d=Math.abs(P[j]-t); if(A[j]>0&&d<bd){ bd=d; best=j; } }
+    if(take) take[h]=best; if(best<0) continue; const g=1-0.5*(bd/tol)*(bd/tol), a=A[best]; s+=KW(h)*Math.sqrt(a)*g; cnt++; if(h<=H6) f6++; if(h===1) h1=a; if(a>mx) mx=a; }
+  if(H6>0) s*=f6/H6;
+  const ok=f0<140?h1>=0.02*mx&&h1>0:(take?true:true);
+  return {s:ok?s:0,cnt:f0>1000?cnt+1:cnt,low:h1>0||(take&&take[2]>=0)||cnt>=3?1:0}; };
+// one frame: x[off .. off+N) at this.sr. Returns {lvl, notes:[{m, f, a}]} (a: amplitude of the note's partials)
+Tracker.prototype.frame=function(x,off){ const N=this.N, re=this.re, im=this.im, w=this.w;
+  for(let i=0;i<N;i++){ re[i]=x[off+i]*w[i]; im[i]=0; } fft(re,im); for(let k=0;k<N>>1;k++) this.mag[k]=Math.hypot(re[k],im[k]);
+  const lvl=this.peaks(), out=[]; if(lvl<this.floor||this.np<1) return {lvl,notes:out};
+  for(let j=0;j<this.np;j++) this.Pr[j]=this.Pa[j];
+  let first=0; const take=new Int32Array(16);
+  for(let it=0;it<this.poly;it++){ let bm=-1, bs=0;
+    for(let m=this.mMin;m<=this.mMax;m++){ const r=this.sal(mtof(m)); if(r.cnt>=2&&r.low&&r.s>bs){ bs=r.s; bm=m; } }
+    if(bm<0) break; if(!first) first=bs; else if(bs<this.rel*first) break;
+    // the exact pitch: ±45 cents in 5-cent steps
+    let bf=mtof(bm), bf_s=bs; for(let c=-45;c<=45;c+=5){ if(!c) continue; const f=mtof(bm+c/100), r=this.sal(f); if(r.s>bf_s){ bf_s=r.s; bf=f; } }
+    this.sal(bf,take); const H=Math.min(14,Math.floor(Math.min(5500,0.45*this.sr)/bf)), amps=[];
+    for(let h=1;h<=H;h++) amps[h]=take[h]>=0?this.Pr[take[h]]:0;
+    if(!(amps[1]>0)&&!(amps[2]>0)) break;
+    // smoothness: a harmonic gives up at most what its neighbours (h-1, h+1) suggest, so a coinciding note (an octave, a fifth) keeps
+    // the rest; the fundamental is taken whole
+    let e=0; for(let h=1;h<=H;h++){ const j=take[h]; if(j<0) continue; const nb=[amps[h-1],amps[h+1]].filter(v=>v!=null&&v>0), av=nb.length?nb.reduce((p,q)=>p+q,0)/nb.length:amps[h], sh=h===1?this.Pr[j]:Math.min(this.Pr[j],av);
+      e+=sh*sh; this.Pr[j]-=sh; }
+    out.push({m:Math.round(ftom(bf)),f:bf,a:Math.sqrt(e),s:bs}); }
+  return {lvl,notes:out}; };
+
+// ------------------------------------------------------------------ attacks: the pick's attack, as in Tinebox build 69
+// the signal high-passed at 2.5 kHz (the attack, not the ringing strings), energy in 1 ms bins; an attack is the next 5 ms rising at
+// least 7 dB over the 45 ms before; its time is where the level first reaches 30 % of the rise
+function onsets(x,sr,o){ o=o||{}; const rise=o.rise||7, fc=2500, w0=TAU*fc/sr, cw=Math.cos(w0), al=Math.sin(w0)/(2*0.7071), a0=1+al;
+  const b=[(1+cw)/2/a0,-(1+cw)/a0,(1+cw)/2/a0,-2*cw/a0,(1-al)/a0], z=[0,0,0,0], B=Math.max(1,Math.round(sr/1000)), nb=Math.floor(x.length/B), e=new Float64Array(nb);
+  for(let i=0,k=0;k<nb;k++){ let s=0; for(let j=0;j<B;j++,i++){ const v=x[i], y=b[0]*v+b[1]*z[0]+b[2]*z[1]-b[3]*z[2]-b[4]*z[3]; z[1]=z[0]; z[0]=v; z[3]=z[2]; z[2]=y; s+=y*y; } e[k]=s/B; }
+  let mx=0; for(let k=0;k<nb;k++) if(e[k]>mx) mx=e[k]; const flo=Math.max(mx*1e-5,1e-11), out=[]; let last=-1e9;
+  for(let k=45;k<nb-5;k++){ let p=0, q=0; for(let j=k-45;j<k;j++) p+=e[j]; p=p/45+flo; for(let j=k;j<k+5;j++) q+=e[j]; q/=5;
+    if(10*Math.log10((q+flo)/p)>=rise&&k-last>=40&&q>mx*1e-4){ // at most one attack per 40 ms
+      const tgt=p+0.3*(q-p); let t=k; for(let j=k;j<k+5;j++){ if(e[j]>=tgt){ t=j; break; } }
+      out.push({t:t/1000,e:q}); last=k; k+=10; } }
+  return out; }
+
+// ------------------------------------------------------------------ offline: the whole capture into notes
+// x: mono samples at sr. Returns {notes:[{m, t0, t1, v, env (amp per frame), fr (exact pitch per frame, MIDI)}], hop, frames}
+function transcribe(x,sr,o){ o=o||{}; const dec=new Decim(sr), y=new Float32Array(Math.ceil(x.length/dec.D)+8), ny=dec.run(x,x.length,y,0), sr2=dec.sr;
+  const N=o.N||2048, hop=Math.round(sr2*0.005), T=new Tracker(sr2,N,{rel:o.rel,poly:o.poly}), pad=N>>1;
+  const z=new Float32Array(ny+2*N); z.set(y.subarray(0,ny),pad); // frame i is centred on sample i*hop
+  const nf=Math.floor(ny/hop)+1, F=[]; let gmax=0;
+  for(let i=0;i<nf;i++){ const r=T.frame(z,i*hop); F.push(r); for(const n of r.notes) if(n.a>gmax) gmax=n.a; }
+  const on=onsets(y.subarray(0,ny),sr2), dt=hop/sr2;
+  // per pitch: on above 12 % of the loudest note (or its own hold level), off below 5 %; a gap under 30 ms bridges
+  const tracks={}; F.forEach((r,i)=>r.notes.forEach(n=>{ (tracks[n.m]=tracks[n.m]||[]).push([i,n.a,n.f]); }));
+  const notes=[], onT=gmax*(o.on||0.07), offT=gmax*(o.off||0.03);
+  for(const mk in tracks){ const m=+mk, L=tracks[mk], A=new Float64Array(nf), Fr=new Float64Array(nf); L.forEach(([i,a,f])=>{ A[i]=a; Fr[i]=ftom(f); });
+    let i=0; while(i<nf){ if(A[i]<onT){ i++; continue; } let s=i, e=i, gap=0, pk=A[i];
+      // back to where it rose above off
+      while(s>0&&A[s-1]>=offT) s--;
+      for(let j=i;j<nf;j++){ if(A[j]>=offT){ e=j; gap=0; if(A[j]>pk) pk=A[j]; } else if(++gap*dt>0.03) break; }
+      if((e-s+1)*dt>=0.04){ notes.push({m,s,e,pk,A,Fr}); } i=e+1; } }
+  // attacks: a note starts at the attack just before its rise (within 30 ms after, or 70 ms before it), and an attack inside a note
+  // with a fresh rise splits it (a re-struck string)
+  const out=[]; const lag=0; // frames are centred, so a note's rise shows half a window early at most; the attack decides
+  for(const n of notes){ let t0=n.s*dt, t1=(n.e+1)*dt; const cand=on.filter(a=>a.t>=t0-0.03&&a.t<=t0+0.07);
+    if(cand.length) t0=cand[0].t; else t0=Math.max(0,t0+0.02);
+    // split at attacks where the note's level jumps
+    const inner=on.filter(a=>a.t>t0+0.06&&a.t<t1-0.04), cuts=[t0];
+    for(const a of inner){ const i0=Math.round(a.t/dt), b=n.A[Math.max(0,i0-6)], c=Math.max(n.A[Math.min(nf-1,i0+4)],n.A[Math.min(nf-1,i0+8)]); if(c>1.5*b+0.02*n.pk) cuts.push(a.t); }
+    cuts.push(t1);
+    for(let c=0;c<cuts.length-1;c++){ const a=cuts[c], b=cuts[c+1], i0=Math.max(0,Math.round(a/dt)), i1=Math.min(nf-1,Math.round(b/dt)); if(b-a<0.04) continue;
+      const env=new Float32Array(i1-i0+1), fr=new Float32Array(i1-i0+1); let pk=0, fs=0, fw=0;
+      for(let i=i0;i<=i1;i++){ env[i-i0]=n.A[i]; fr[i-i0]=n.Fr[i]||n.m; if(n.A[i]>pk) pk=n.A[i]; if(n.Fr[i]){ fs+=n.Fr[i]*n.A[i]; fw+=n.A[i]; } }
+      out.push({m:n.m,t0:a,t1:b,i0,v:pk/gmax,pk,env,fr,fm:fw?fs/fw:n.m}); } }
+  out.sort((p,q)=>p.t0-q.t0||p.m-q.m);
+  // ghosts: what is left of a note's harmonics (at a change of note, or a harmonic above its neighbours) shows as a weaker note an
+  // octave, a twelfth, two octaves... above a note sounding with it. Short ones go if under 60 % of that note, any under 25 %.
+  const HI=[12,19,24,28,31,34,36], keep=out.filter(n=>{ const d=n.t1-n.t0;
+    // a short note on the harmonics of two or more notes sounding with it (a palm-muted power chord's upper partials)
+    if(d<0.15&&out.filter(q=>q!==n&&q.m<n.m&&HI.includes(n.m-q.m)&&Math.min(n.t1,q.t1)-Math.max(n.t0,q.t0)>=0.5*d).length>=2) return false;
+    for(const q of out){ if(q===n||q.m>=n.m||!HI.includes(n.m-q.m)) continue; const ov=Math.min(n.t1,q.t1)-Math.max(n.t0,q.t0);
+      // a note that just ended leaves its harmonics for a moment (a riff's change of note)
+      if(d<0.16&&q.t1>=n.t0-0.1&&q.t1<=n.t0+0.12&&n.pk<0.9*q.pk) return false;
+      if(ov<0.5*d) continue; if((d<0.15&&n.pk<0.6*q.pk)||n.pk<0.25*q.pk) return false; }
+    return !(d<0.07&&n.v<0.5); });
+  out.length=0; keep.forEach(n=>out.push(n));
+  // short, weak notes outside the loop's key are what is left of a change of chord, not notes you played (o.clean, on by default)
+  if(o.clean!==false&&out.length>4){ const k=keyOf(out), sc=k.mode==='major'?[0,2,4,5,7,9,11]:[0,2,3,5,7,8,10,11];
+    const kept=out.filter(n=>sc.includes(((n.m-k.tonic)%12+12)%12)||(n.t1-n.t0)>=0.12||n.v>=0.35); out.length=0; kept.forEach(n=>out.push(n)); }
+  return {notes:out,dt,frames:nf,onsets:on,gmax,sr2}; }
+
+// the loop's key from its notes (Krumhansl–Kessler profiles), used by "snap to key"
+const KMAJ=[6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88], KMIN=[6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+function corr(v,p){ const n=12, mv=v.reduce((a,b)=>a+b,0)/n, mp=p.reduce((a,b)=>a+b,0)/n; let sxy=0,sxx=0,syy=0; for(let i=0;i<n;i++){ const a=v[i]-mv, b=p[i]-mp; sxy+=a*b; sxx+=a*a; syy+=b*b; } return sxx&&syy?sxy/Math.sqrt(sxx*syy):0; }
+function keyOf(notes){ const pc=new Array(12).fill(0); for(const n of notes) pc[((n.m%12)+12)%12]+=(n.t1-n.t0)*n.v; let best=null;
+  for(let t=0;t<12;t++) for(const [mode,P] of [['major',KMAJ],['minor',KMIN]]){ const r=corr(pc,P.map((_,i)=>P[(i-t+12)%12])); if(!best||r>best.r) best={tonic:t,mode,r}; }
+  return best; }
+function snapToKey(notes,key){ if(!key) return notes; const sc=key.mode==='major'?[0,2,4,5,7,9,11]:[0,2,3,5,7,8,10], inS=m=>sc.includes(((m-key.tonic)%12+12)%12);
+  return notes.map(n=>{ if(inS(n.m)) return n; const up=inS(n.m+1), dn=inS(n.m-1), d=n.fm-n.m, to=up&&(!dn||d>0)?n.m+1:dn?n.m-1:n.m; return Object.assign({},n,{m:to,fm:n.fm+(to-n.m)}); }); }
+
+// ------------------------------------------------------------------ the synth
+// presets: osc, envelope mode ('follow' the guitar's level, or 'trig' an envelope at each attack), filter, octave, mono line
+const PRESETS={
+  pad:  {name:'Pad',   osc:'supersaw',det:0.11,mode:'follow',att:0.07,rel:0.45,curve:0.55,cut:1700,res:0.12,ktrk:0.3,gain:0.55},
+  pluck:{name:'Pluck', osc:'sawsq',mode:'trig',att:0.002,dec:0.32,sus:0.18,rel:0.14,cut:650,fenv:3400,fdec:0.15,res:0.32,ktrk:0.4,gain:0.7},
+  bass: {name:'Bass',  osc:'sinesaw',mono:'low',oct:-1,mode:'follow',att:0.006,rel:0.09,curve:0.6,cut:850,res:0.18,glide:0.03,gain:1.0},
+  lead: {name:'Lead',  osc:'saw',mono:'high',mode:'follow',att:0.008,rel:0.14,curve:0.6,cut:3000,res:0.3,glide:0.045,bend:true,gain:0.6},
+  organ:{name:'Organ', osc:'organ',mode:'follow',att:0.008,rel:0.07,curve:0.5,cut:7000,res:0,gain:0.5},
+  bells:{name:'Bells', osc:'fm',ratio:3.5,idx:2.4,idec:0.3,mode:'trig',att:0.001,dec:1.5,sus:0,rel:0.6,cut:9000,res:0,gain:0.65}
+};
+const blep=(t,dt)=>{ if(t<dt){ t/=dt; return t+t-t*t-1; } if(t>1-dt){ t=(t-1)/dt; return t*t+t+t+1; } return 0; };
+function Voice(sr,P){ this.sr=sr; this.P=P; this.ph=new Float64Array(4); this.f=0; this.fT=0; this.a=0; this.aT=0; this.st=0; this.t=0; this.v=1; this.ic1=0; this.ic2=0; this.fe=0; this.relA=0;
+  this.cA=1-Math.exp(-1/(sr*Math.max(0.001,P.att))); this.cR=1-Math.exp(-1/(sr*Math.max(0.005,P.rel))); this.cG=P.glide?1-Math.exp(-1/(sr*P.glide)):1; this.g=0; this.gk=0; }
+Voice.prototype.on=function(f,v){ if(this.st===0||!this.P.glide) this.f=f; this.fT=f; this.v=v; this.t=0; this.st=1; this.fe=1; if(this.P.mode==='trig'){ this.a=0; } };
+Voice.prototype.ctl=function(aT,fT){ this.aT=aT; if(fT) this.fT=fT; };
+Voice.prototype.off=function(){ if(this.st===1){ this.st=2; this.relA=this.a; } };
+Voice.prototype.idle=function(){ return this.st===0; };
+// adds n samples to out[o..]
+Voice.prototype.render=function(out,o,n,gain){ const P=this.P, sr=this.sr, isT=P.mode==='trig';
+  for(let i=0;i<n;i++){
+    // level
+    if(isT){ const t=this.t; let e;
+      if(this.st===1){ e=t<P.att?t/P.att:P.sus+(1-P.sus)*Math.exp(-(t-P.att)/Math.max(0.01,P.dec)); this.a=e*this.v; }
+      else if(this.st===2){ this.a*=1-this.cR; if(this.a<1e-5){ this.st=0; this.a=0; } } }
+    else { const tgt=this.st===1?this.aT:0, c=tgt>this.a?this.cA:this.cR; this.a+=(tgt-this.a)*c; if(this.st===2&&this.a<1e-5){ this.st=0; this.a=0; } }
+    if(this.st===0) return;
+    this.f+=(this.fT-this.f)*this.cG; const f=this.f, dt=f/sr; let s=0;
+    switch(P.osc){
+      case 'supersaw': for(let k=0;k<3;k++){ const d=1+(k-1)*P.det*0.0578, q=dt*d; let p=this.ph[k]+q; if(p>=1) p-=1; this.ph[k]=p; s+=(2*p-1-blep(p,q))*0.4; } break;
+      case 'sawsq': { let p=this.ph[0]+dt; if(p>=1) p-=1; this.ph[0]=p; const saw=2*p-1-blep(p,dt), p2=(p+0.5)%1, sq=(p<0.5?1:-1)+blep(p,dt)-blep(p2,dt); s=0.6*saw+0.4*sq; break; }
+      case 'sinesaw': { let p=this.ph[0]+dt; if(p>=1) p-=1; this.ph[0]=p; s=Math.sin(TAU*p)+0.3*(2*p-1-blep(p,dt)); break; }
+      case 'saw': { let p=this.ph[0]+dt; if(p>=1) p-=1; this.ph[0]=p; let q=this.ph[1]+dt*1.004; if(q>=1) q-=1; this.ph[1]=q; s=0.6*(2*p-1-blep(p,dt))+0.4*(2*q-1-blep(q,dt*1.004)); break; }
+      case 'organ': { let p=this.ph[0]+dt; if(p>=1) p-=1; this.ph[0]=p; const x=TAU*p; s=0.55*Math.sin(x)+0.35*Math.sin(2*x)+0.22*Math.sin(3*x)+0.14*Math.sin(4*x); break; }
+      case 'fm': { let p=this.ph[0]+dt; if(p>=1) p-=1; this.ph[0]=p; let q=this.ph[1]+dt*P.ratio; if(q>=1) q-=1; this.ph[1]=q; const I=P.idx*Math.exp(-this.t/P.idec)*this.v; s=Math.sin(TAU*p+I*Math.sin(TAU*q)); break; }
+      default: { let p=this.ph[0]+dt; if(p>=1) p-=1; this.ph[0]=p; s=Math.sin(TAU*p); }
+    }
+    // filter (TPT state-variable low-pass), coefficient updated every 32 samples
+    if(P.res!=null&&P.cut<8000){ if((this.gk++&31)===0){ let fc=P.cut*(1+(P.ktrk||0)*(f/220-1)); if(P.fenv) fc+=P.fenv*Math.exp(-this.t/P.fdec); fc=Math.max(60,Math.min(0.42*sr,fc)); this.g=Math.tan(Math.PI*fc/sr); }
+      const g=this.g, k=2-2*Math.min(0.95,P.res), a1=1/(1+g*(g+k)), a2=g*a1, a3=g*a2, v3=s-this.ic2, v1=a1*this.ic1+a2*v3, v2=this.ic2+a2*this.ic1+a3*v3; this.ic1=2*v1-this.ic1; this.ic2=2*v2-this.ic2; s=v2; }
+    out[o+i]+=s*this.a*gain; this.t+=1/sr; } };
+
+// ------------------------------------------------------------------ offline render: notes into audio at sr (mono)
+// lvl: the note's level → the voice's level. 'follow' tracks the guitar's own swell and decay (compressed by curve), 'trig' plays
+// its envelope from each attack at the note's velocity
+function render(tr,sr,dur,pname,o){ o=o||{}; const P=Object.assign({},PRESETS[pname]||PRESETS.pad,o.over||{}), oct=(P.oct||0)+(o.oct||0), n=Math.ceil(dur*sr), y=new Float32Array(n), dt=tr.dt, B=Math.max(1,Math.round(dt*sr));
+  let notes=tr.notes; if(o.snap) notes=snapToKey(notes,o.key||keyOf(notes));
+  const pitch=(nt,i)=>{ const fr=nt.fr?nt.fr[Math.min(nt.fr.length-1,Math.max(0,i))]:nt.m; return mtof((P.bend||o.glide?fr:nt.m)+12*oct); };
+  if(P.mono){ // one line: the lowest (bass) or highest (lead) note sounding in each frame
+    const nf=Math.ceil(dur/dt)+1, pick=new Array(nf).fill(null);
+    for(const nt of notes){ const i0=Math.round(nt.t0/dt), i1=Math.round(nt.t1/dt); for(let i=Math.max(0,i0);i<=Math.min(nf-1,i1);i++){ const c=pick[i]; if(!c||(P.mono==='low'?nt.m<c.nt.m:nt.m>c.nt.m)) pick[i]={nt,i}; } }
+    const V=new Voice(sr,P); let cur=null;
+    for(let i=0;i<nf;i++){ const p=pick[i], s0=i*B; if(s0>=n) break;
+      if(p){ const k=i-Math.round(p.nt.t0/dt), lv=Math.pow(Math.max(0,p.nt.env[Math.min(p.nt.env.length-1,Math.max(0,k))]/p.nt.pk),P.curve||1)*Math.pow(p.nt.v,0.5);
+        if(p.nt!==cur){ V.on(pitch(p.nt,k),Math.pow(p.nt.v,0.5)); cur=p.nt; } V.ctl(lv,pitch(p.nt,k)); }
+      else if(cur){ V.off(); cur=null; }
+      V.render(y,s0,Math.min(B,n-s0),P.gain); }
+  } else {
+    for(const nt of notes){ const V=new Voice(sr,P), i0=Math.round(nt.t0/dt), len=nt.env.length; V.on(pitch(nt,0),Math.pow(nt.v,0.5));
+      for(let k=0;;k++){ const s0=(i0+k)*B; if(s0>=n) break; const lv=k<len?Math.pow(Math.max(0,nt.env[k]/nt.pk),P.curve||1)*Math.pow(nt.v,0.5):0;
+        if(k<len) V.ctl(lv,pitch(nt,k)); else if(k===len) V.off(); V.render(y,s0,Math.min(B,n-s0),P.gain); if(V.idle()) break; if(k>len+Math.ceil(4/dt)) break; } }
+  }
+  return y; }
+
+// fold a render into one loop length (circular): sample i of y lands at (i + off) mod Nl
+function fold(y,Nl,off){ const o=new Float32Array(Nl); for(let i=0;i<y.length;i++){ let j=(i+off)%Nl; if(j<0) j+=Nl; o[j]+=y[i]; } return o; }
+function peakOf(y){ let m=0; for(let i=0;i<y.length;i++){ const v=Math.abs(y[i]); if(v>m) m=v; } return m; }
+// a quiet place for the print's seam: the 60 ms window with the least energy, at least `away` s from the wrap (phase 0)
+function seamOf(y,sr,away){ const W=Math.round(0.06*sr), a=Math.round((away||0.35)*sr), n=y.length; if(n<2*a+W) return 0.5;
+  let best=a, be=1e99, s=0; for(let i=a;i<a+W;i++) s+=y[i]*y[i];
+  for(let i=a;i+W<n-a;i+=Math.round(sr*0.005)){ let e=0; for(let j=i;j<i+W;j+=4) e+=y[j]*y[j]; if(e<be){ be=e; best=i; } }
+  return (best+W/2)/sr; }
+
+// ------------------------------------------------------------------ live: the tracker frame by frame, driving voices (the preview)
+// feed(x, n): mono input at the context rate; out: n samples of synth. Delay: the tracker's window weight (about 20 ms) + 1 frame.
+function Live(sr,o){ o=o||{}; this.sr=sr; this.dec=new Decim(sr); this.N=o.N||2048; this.T=new Tracker(this.dec.sr,this.N,{skew:0.78,rel:0.2,poly:6});
+  this.buf=new Float32Array(this.N*2); this.nb=0; this.hop=Math.max(32,Math.round(this.dec.sr*0.0027)); this.since=0; this.tmp=new Float32Array(4096);
+  this.V=[]; this.map={}; this.set(o.preset||'pad',o.oct||0); this.pk=1e-3; this.seen={}; this.gain=o.gain==null?1:o.gain; }
+Live.prototype.set=function(p,oct){ this.P=Object.assign({},PRESETS[p]||PRESETS.pad); this.oct=(this.P.oct||0)+(oct||0); this.V.forEach(v=>v.off()); this.V=[]; this.map={}; };
+Live.prototype.feed=function(x,n,out){ const k=this.dec.run(x,n,this.tmp,0), N=this.N;
+  // keep the last N decimated samples
+  if(this.nb+k>this.buf.length){ const keep=N; this.buf.copyWithin(0,this.nb-keep,this.nb); this.nb=keep; }
+  this.buf.set(this.tmp.subarray(0,k),this.nb); this.nb+=k; this.since+=k;
+  if(this.nb>=N&&this.since>=this.hop){ this.since=0; this.step(this.T.frame(this.buf,this.nb-N)); }
+  for(let i=0;i<n;i++) out[i]=0; for(const v of this.V) v.render(out,0,n,this.P.gain*this.gain);
+  this.V=this.V.filter(v=>!v.idle()); };
+Live.prototype.step=function(r){ const P=this.P, now={}; let mx=0; for(const nt of r.notes) if(nt.a>mx) mx=nt.a; this.pk=Math.max(mx,this.pk*0.9995);
+  let ns=r.notes.filter(nt=>nt.a>=0.08*this.pk);
+  if(P.mono&&ns.length) ns=[ns.reduce((a,b)=>(P.mono==='low'?b.m<a.m:b.m>a.m)?b:a)];
+  for(const nt of ns){ const key=P.mono?'mono':nt.m; now[key]=nt; }
+  // a pitch must show in 2 frames running before it sounds; a voice ends after 25 ms without its pitch
+  for(const key in now){ const nt=now[key], seen=this.seen[key]=(this.seen[key]||0)+1, f=mtof((P.bend?Math.log2(nt.f/440)*12+69:nt.m)+12*this.oct), lv=Math.pow(Math.min(1,nt.a/this.pk),P.curve||1);
+    let v=this.map[key]; if(!v&&seen>=2){ if(this.V.length>=8){ const o=this.V.shift(); o.off(); } v=new Voice(this.sr,P); v.on(f,Math.sqrt(lv)); v.miss=0; this.V.push(v); this.map[key]=v; }
+    if(v){ if(P.mono&&v.mn!==nt.m&&P.mode==='trig') v.on(f,Math.sqrt(lv)); v.mn=nt.m; v.miss=0; v.ctl(lv,f); } }
+  for(const key in this.map){ if(now[key]) continue; const v=this.map[key]; if(++v.miss>=9){ v.off(); delete this.map[key]; } }
+  for(const key in this.seen) if(!now[key]) delete this.seen[key]; };
+
+return {fft,Decim,Tracker,onsets,transcribe,keyOf,snapToKey,PRESETS,Voice,render,fold,peakOf,seamOf,Live,mtof,ftom};
+}
+
+
+</script>
+<script>
+'use strict';
+/* Tinebox Loop: a guitar looper that loops in the app and keeps the TP-7 as the tape.
+   6 Nov 2026 design (your answers): everything records in the app; each layer is accepted or dismissed on the footswitch; accepted
+   layers are printed onto the TP-7 as straight passes when you stop (never with TP-7 loop points while armed); the Sections view
+   plays the TP-7 recording from any section. Raw guitar on track 1, synth on track 2, drums on track 3.
+   While you play, the TP-7 stands still and armed on line 1: the guitar then reaches the app over USB (8 Oct) and nothing records. */
+const APP_BUILD='1 (6 Nov 2026)';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const waitFor=(fn,ms,step)=>new Promise(res=>{ const t0=performance.now(); const f=()=>{ let v=false; try{ v=fn(); }catch(e){} if(v||performance.now()-t0>ms){ clearInterval(iv); res(!!v); } }; const iv=setInterval(f,step||20); f(); });
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const medOf=a=>{ const s=[...a].sort((p,q)=>p-q); return s.length?s[s.length>>1]:null; };
+const msTxt=x=>x==null||!isFinite(x)?'n/a':(x*1000).toFixed(1)+' ms';
+const G=GDSP();
+
+// ------------------------------------------------------------------ settings and the session (audio itself lives in IndexedDB)
+const LS='tinebox-loop-1';
+function defaults(){ return {v:1,metroOn:true,lv:{metro:0.8,pads:0.9,loop:1,prev:0.8},kit:'studio',padFix:null,quant:0,
+  synth:{preset:'pad',oct:0,preview:true,snap:false,glide:false,level:0.8},printOnStop:true,autoAccept:false,
+  // marker delay 79 ms and loop out −19 ms from Tinebox (5 Oct, 31 Oct); MIDI offset per audio setup (14 Oct: 10 ms at 48 kHz/1 ch, 4 ms at 96 kHz/6 ch)
+  tp:{mDelay:79,loopAdj:-19,offsets:{'48 kHz, 1 ch':10,'96 kHz, 6 ch':4},rt:{},printFix:0},diag:{},ses:null}; }
+let S=defaults();
+try{ const j=JSON.parse(localStorage.getItem(LS)||'null'); if(j&&j.v===1){ S=Object.assign(defaults(),j); S.tp=Object.assign(defaults().tp,j.tp||{}); S.synth=Object.assign(defaults().synth,j.synth||{}); S.lv=Object.assign(defaults().lv,j.lv||{}); } }catch(e){}
+let saveT=null; function save(){ clearTimeout(saveT); saveT=setTimeout(saveNow,300); }
+function saveNow(){ clearTimeout(saveT); try{ localStorage.setItem(LS,JSON.stringify(S,(k,v)=>k.startsWith('_')?undefined:v)); }catch(e){} }
+window.addEventListener('pagehide',saveNow);
+
+// the log: presses, what they did, what the TP-7 reported; kept across reloads
+const LOG=(()=>{ try{ return JSON.parse(localStorage.getItem(LS+'-log')||'[]'); }catch(e){ return []; } })(); let logDirty=false;
+function log(k,txt){ LOG.push([Date.now(),k,String(txt).slice(0,240)]); if(LOG.length>600) LOG.splice(0,LOG.length-600); logDirty=true; }
+setInterval(()=>{ if(logDirty){ logDirty=false; try{ localStorage.setItem(LS+'-log',JSON.stringify(LOG)); }catch(e){} } },3000);
+function logText(n){ const L=LOG.slice(-(n||600)); let t0=null; return L.map(([t,k,x])=>{ if(k==='app'||t0==null) t0=t; return k==='app'?`— ${x}`:`  +${((t-t0)/1000).toFixed(2).padStart(8)} s  ${k.padEnd(5)} ${x}`; }).join('\n'); }
+
+const IDB={db:null,
+  open(){ if(IDB.p) return IDB.p; return IDB.p=new Promise(res=>{ try{ const r=indexedDB.open('tinebox-loop',1); r.onupgradeneeded=()=>{ r.result.createObjectStore('a'); }; r.onsuccess=()=>{ IDB.db=r.result; res(true); }; r.onerror=()=>res(false); }catch(e){ res(false); } }); },
+  op(mode,f){ return IDB.open().then(()=>new Promise(res=>{ if(!IDB.db) return res(null); try{ const tx=IDB.db.transaction('a',mode), st=tx.objectStore('a'), r=f(st); tx.oncomplete=()=>res(r&&'result' in r?r.result:true); tx.onerror=()=>res(null); }catch(e){ res(null); } })); },
+  put(k,v){ return IDB.op('readwrite',s=>s.put(v,k)); }, get(k){ return IDB.op('readonly',s=>s.get(k)); }, del(k){ return IDB.op('readwrite',s=>s.delete(k)); } };
+
+let toastT=null; function toast(m){ const el=$('#toast'); if(!el) return; el.textContent=m; el.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),2600); }
+
+// ------------------------------------------------------------------ audio
+let ctx=null; const A={};
+const lat=()=>ctx?((ctx.outputLatency||0)+(ctx.baseLatency||0)):0;
+function softCurve(){ const n=2048, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1)*2-1, a=Math.abs(x); c[i]=a<0.8?x:Math.sign(x)*(0.8+0.2*Math.tanh((a-0.8)/0.2)); } return c; }
+function initAudio(){
+  if(ctx){ if(ctx.state!=='running') ctx.resume().catch(()=>{}); return ctx; }
+  const AC=window.AudioContext||window.webkitAudioContext; if(!AC){ toast('This browser has no Web Audio.'); return null; }
+  ctx=new AC({latencyHint:'interactive'});
+  const g=v=>{ const n=ctx.createGain(); n.gain.value=v; return n; };
+  // no limiter with look-ahead: a pad must sound the moment you hit it. A soft clip at the end instead.
+  A.master=g(1); A.clip=ctx.createWaveShaper(); A.clip.curve=softCurve(); A.master.connect(A.clip); A.clip.connect(ctx.destination);
+  A.mon=g(1); A.mon.connect(A.master);                 // what you hear while you play; silent while the app prints to the TP-7
+  A.loop=g(S.lv.loop); A.loop.connect(A.mon); A.metro=g(S.lv.metro); A.metro.connect(A.mon); A.count=g(0.8); A.count.connect(A.mon);
+  A.pads=g(S.lv.pads); A.pads.connect(A.mon); A.prev=g(S.lv.prev); A.prev.connect(A.mon);
+  A.print=g(1); A.print.connect(A.master); A.test=g(1); A.test.connect(A.master);
+  const nb=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), d=nb.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; A.noise=nb;
+  setInterval(tick,25);
+  log('app',`audio ${ctx.sampleRate} Hz, ${ctx.destination.maxChannelCount} output channels, base latency ${msTxt(ctx.baseLatency)}, output latency ${msTxt(ctx.outputLatency)}`);
+  ctx.onstatechange=()=>log('app',`audio ${ctx.state}`);
+  return ctx; }
+const setupKey=()=>ctx?`${ctx.sampleRate/1000} kHz, ${ctx.destination.maxChannelCount} ch`:'';
+const midiOffset=()=>{ const o=S.tp.offsets||{}, k=setupKey(); return o[k]!=null?o[k]:k.startsWith('96')?4:10; };
+// performance time (ms) at which audio scheduled at graph time `at` is heard; and back
+function audioToPerf(at){ const fb=performance.now()+(at-ctx.currentTime+lat())*1000;
+  // 25 Oct: after the output layout changed, the output timestamp went stale (MIDI 72 s late); trust it only when it agrees
+  try{ if(ctx.getOutputTimestamp){ const o=ctx.getOutputTimestamp(); if(o&&o.performanceTime>0&&o.contextTime>0){ const v=o.performanceTime+(at-o.contextTime)*1000; if(Math.abs(v-fb)<250) return v; } } }catch(e){}
+  return fb; }
+const h2p=at=>audioToPerf(at);
+function p2h(p){ if(!ctx) return 0; let v=ctx.currentTime+(p-performance.now())/1000-lat();
+  try{ if(ctx.getOutputTimestamp){ const o=ctx.getOutputTimestamp(); if(o&&o.performanceTime>0&&o.contextTime>0){ const w=o.contextTime+(p-o.performanceTime)/1000; if(Math.abs(w-v)<0.25) v=w; } } }catch(e){}
+  return v; }
+const evT=e=>{ const ts=e&&e.timeStamp, n=performance.now(); return ts>0&&n-ts>=0&&n-ts<500?ts:n; }; // an event's time, if it is believable
+
+// ------------------------------------------------------------------ input: the TP-7's USB return (track 1 = the guitar while it is armed)
+// An audio worklet takes it in 128-sample blocks, so the live synth adds no buffering (Tinebox's 2048-sample script processor added
+// about 43 ms at 48 kHz). Blocks go to a ring with their graph time; the round trip RT puts every take where you played it.
+const IN={stream:null,node:null,src:null,ring:null,mask:0,w:-1e15,sr:0,pk:0,kind:'',taps:new Set(),stale:false};
+const WORKLET=()=>`${GDSP.toString()}
+const G=GDSP();
+class TLIn extends AudioWorkletProcessor{
+  constructor(){ super(); this.buf=new Float32Array(2048); this.n=0; this.t0=0; this.live=null; this.on=false; this.m=new Float32Array(128);
+    this.port.onmessage=e=>{ const d=e.data||{}; if('preview' in d){ this.on=!!d.preview; if(this.on){ if(!this.live) this.live=new G.Live(sampleRate,{preset:d.preset,oct:d.oct}); else this.live.set(d.preset,d.oct); } }
+      if(d.gain!=null&&this.live) this.live.gain=d.gain; }; }
+  process(inputs,outputs){ const inp=inputs[0]||[], a=inp[0], b=inp[1], out=outputs[0]&&outputs[0][0], n=a?a.length:128, m=this.m;
+    if(a){ for(let i=0;i<n;i++) m[i]=b?0.5*(a[i]+b[i]):a[i]; } else m.fill(0);
+    if(this.n===0) this.t0=currentTime; this.buf.set(m.subarray(0,n),this.n); this.n+=n;
+    if(this.n>=1024){ const c=this.buf.slice(0,this.n); this.port.postMessage({t:this.t0,x:c},[c.buffer]); this.n=0; }
+    if(out){ if(this.on&&this.live) this.live.feed(m,n,out); else out.fill(0); }
+    return true; } }
+registerProcessor('tl-in',TLIn);`;
+function inChunk(t,x){ const sr=IN.sr, i0=Math.round(t*sr), R=IN.ring, M=IN.mask; let pk=0;
+  for(let j=0;j<x.length;j++){ const v=x[j]; R[(i0+j)&M]=v; const a=v<0?-v:v; if(a>pk) pk=a; }
+  IN.w=i0+x.length; IN.pk=Math.max(pk,IN.pk*0.9); IN.last=performance.now(); IN.taps.forEach(f=>{ try{ f(t,x); }catch(e){} }); }
+async function openInput(){
+  initAudio(); if(!ctx) return false;
+  if(IN.stream){ const tr=IN.stream.getAudioTracks()[0]; if(tr&&tr.readyState==='live'&&!IN.stale) return true;
+    try{ if(IN.node) IN.node.disconnect(); if(IN.src) IN.src.disconnect(); IN.stream.getTracks().forEach(x=>x.stop()); }catch(e){} IN.stream=null; IN.stale=false; log('app','audio input opened again'); }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast('This browser offers no audio input.'); return false; }
+  try{ if(navigator.audioSession) navigator.audioSession.type='play-and-record'; }catch(e){}
+  try{ IN.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:{ideal:8}}}); }
+  catch(e){ toast('Audio input was blocked ('+e.name+').'); log('err','audio input blocked: '+e.name); return false; }
+  const tr=IN.stream.getAudioTracks()[0]; if(tr) tr.addEventListener('ended',()=>{ IN.stale=true; });
+  IN.sr=ctx.sampleRate; const bits=IN.sr>60000?23:22; IN.ring=new Float32Array(1<<bits); IN.mask=(1<<bits)-1; IN.w=-1e15;
+  IN.src=ctx.createMediaStreamSource(IN.stream); IN.kind='';
+  if(ctx.audioWorklet&&window.AudioWorkletNode){ const code=WORKLET();
+    for(const url of [URL.createObjectURL(new Blob([code],{type:'application/javascript'})),'data:application/javascript;base64,'+btoa(unescape(encodeURIComponent(code)))]){
+      try{ await ctx.audioWorklet.addModule(url); IN.kind='worklet'; break; }catch(e){ log('err','worklet: '+(e&&e.message||e)); } } }
+  if(IN.kind==='worklet'){ IN.node=new AudioWorkletNode(ctx,'tl-in',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],channelCount:2,channelCountMode:'explicit',channelInterpretation:'discrete'});
+    IN.node.port.onmessage=e=>inChunk(e.data.t,e.data.x); }
+  else { // fallback: a 256-sample script processor, the live synth on the main thread
+    IN.kind='script'; const sp=IN.node=ctx.createScriptProcessor(256,2,1); sp.channelCountMode='explicit'; sp.channelInterpretation='discrete'; IN.live=null;
+    sp.onaudioprocess=e=>{ const ib=e.inputBuffer, a=ib.getChannelData(0), b=ib.numberOfChannels>1?ib.getChannelData(1):a, n=a.length, m=new Float32Array(n), o=e.outputBuffer.getChannelData(0);
+      for(let i=0;i<n;i++) m[i]=0.5*(a[i]+b[i]); inChunk(e.playbackTime!=null?e.playbackTime:ctx.currentTime,m);
+      if(IN.pv&&IN.live) IN.live.feed(m,n,o); else o.fill(0); }; }
+  IN.src.connect(IN.node); IN.node.connect(A.prev);
+  const st=tr&&tr.getSettings?tr.getSettings():{}; IN.nch=st.channelCount||2;
+  log('app',`audio input: ${IN.kind}, ${IN.nch} channel${IN.nch>1?'s':''}`); return true; }
+// the live synth while a synth layer records (the delay is the round trip plus about 20 ms of tracking)
+function preview(on){ const s=S.synth; if(!IN.node) return; on=on&&s.preview;
+  if(IN.kind==='worklet') IN.node.port.postMessage({preview:on,preset:s.preset,oct:s.oct,gain:1});
+  else { IN.pv=on; if(on){ if(!IN.live) IN.live=new G.Live(ctx.sampleRate,{preset:s.preset,oct:s.oct}); else IN.live.set(s.preset,s.oct); } } }
+// what the input heard over graph-time span [a, b), as arrival times (no round-trip shift); null if not all there yet or gone
+function inSlice(a,b){ if(!IN.ring) return null; const i0=Math.round(a*IN.sr), i1=Math.round(b*IN.sr); if(i1>IN.w||i0<IN.w-IN.ring.length+IN.sr) return null;
+  const o=new Float32Array(Math.max(0,i1-i0)); for(let i=i0;i<i1;i++) o[i-i0]=IN.ring[i&IN.mask]; return o; }
+// what you played over heard-time span [a, b): the input shifted back by the round trip
+const RT=()=>S.ses&&S.ses.rt!=null?S.ses.rt:(S.tp.rt[setupKey()]!=null?S.tp.rt[setupKey()]:0.1);
+const takeSlice=(a,b)=>inSlice(a+RT(),b+RT());
+const takeReadyAt=b=>b+RT()+0.06; // graph time at which [.., b) is in
+
+// ------------------------------------------------------------------ sounds: the metronome knock, the count-in beep, the drums
+function nsrc(c,t,dur,noise){ const s=c.createBufferSource(); s.buffer=noise; s.loop=true; s.start(t,Math.random()); s.stop(t+dur+0.05); return s; }
+function env(g,t,v,dec){ g.gain.setValueAtTime(Math.max(v,0.0001),t); g.gain.exponentialRampToValueAtTime(0.0001,t+dec); }
+// build 69's knock: a sine falling from 1.5 times its pitch over 15 ms, 90 ms long, plus a snap of band-passed noise
+function knock(t,acc,out){ const o=ctx.createOscillator(), g=ctx.createGain(), f=acc?1500:1000; g.gain.value=0;
+  o.frequency.setValueAtTime(f*1.5,t); o.frequency.exponentialRampToValueAtTime(f,t+0.015);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(acc?0.85:0.65,t+0.001); g.gain.exponentialRampToValueAtTime(0.0001,t+0.09); o.connect(g); g.connect(out||A.metro); o.start(t); o.stop(t+0.1);
+  const n=nsrc(ctx,t,0.03,A.noise), bp=ctx.createBiquadFilter(), ng=ctx.createGain(); bp.type='bandpass'; bp.frequency.value=acc?4200:3200; bp.Q.value=1.4; ng.gain.value=0; env(ng,t,acc?0.5:0.4,0.02); n.connect(bp); bp.connect(ng); ng.connect(out||A.metro);
+  return [g,ng]; }
+// the count-in: a bright two-tone beep, higher on 1
+function beep(t,n){ const g=ctx.createGain(); g.gain.value=0; g.connect(A.count);
+  [[n===1?1760:1319,1],[n===1?3520:2638,0.3]].forEach(([fq,a])=>{ const o=ctx.createOscillator(), og=ctx.createGain(); o.frequency.value=fq; og.gain.value=a; o.connect(og); og.connect(g); o.start(t); o.stop(t+0.2); });
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.75,t+0.003); g.gain.exponentialRampToValueAtTime(0.0001,t+0.17); return g; }
+const KITS={
+  studio:{name:'Studio', kHi:150,kLo:50,kSw:0.08,kDec:0.38,kClick:0.35,snDec:0.17,snTone:190,snBP:3000,hat:0.045,oh:0.35,lp:16000,perc:'rim'},
+  tr:    {name:'Machine',kHi:115,kLo:41,kSw:0.13,kDec:0.95,kClick:0,   snDec:0.2, snTone:235,snBP:4200,hat:0.035,oh:0.5, lp:15000,perc:'rim'},
+  dusty: {name:'Dusty',  kHi:125,kLo:47,kSw:0.07,kDec:0.3, kClick:0.2, snDec:0.13,snTone:175,snBP:2000,hat:0.035,oh:0.22,lp:4800, perc:'shaker'}};
+const PADS=['Kick','Snare','Clap','Hat','Open hat','Perc'];
+// Tinebox's drum voices, on any context (live or offline): 0 kick, 1 snare, 2 clap, 3 hat, 4 open hat, 5 rim or shaker
+function drumV(c,out,noise,st,i,t,v,K){ const G_=()=>{ const g=c.createGain(); g.gain.value=0; return g; }, filt=(type,f,q)=>{ const x=c.createBiquadFilter(); x.type=type; x.frequency.value=f; if(q) x.Q.value=q; return x; };
+  if(i===0){ const o=c.createOscillator(), g=G_(); o.frequency.setValueAtTime(K.kHi,t); o.frequency.exponentialRampToValueAtTime(K.kLo,t+K.kSw); env(g,t,v,K.kDec); o.connect(g); g.connect(out); o.start(t); o.stop(t+K.kDec+0.05);
+    if(K.kClick){ const n=nsrc(c,t,0.02,noise), f=filt('highpass',2500), g2=G_(); env(g2,t,v*K.kClick,0.015); n.connect(f); f.connect(g2); g2.connect(out); } }
+  else if(i===1){ const n=nsrc(c,t,K.snDec,noise), f=filt('bandpass',K.snBP,0.6), g=G_(); env(g,t,v*0.7,K.snDec); n.connect(f); f.connect(g); g.connect(out);
+    const o=c.createOscillator(), g2=G_(); o.type='triangle'; o.frequency.setValueAtTime(K.snTone,t); o.frequency.exponentialRampToValueAtTime(K.snTone*0.8,t+0.08); env(g2,t,v*0.45,0.1); o.connect(g2); g2.connect(out); o.start(t); o.stop(t+0.15); }
+  else if(i===2){ const n=nsrc(c,t,0.3,noise), f=filt('bandpass',1150,1.1), g=G_(), a=v*0.8;
+    g.gain.setValueAtTime(a,t); g.gain.setValueAtTime(a*0.15,t+0.009); g.gain.setValueAtTime(a,t+0.018); g.gain.setValueAtTime(a*0.15,t+0.027); g.gain.setValueAtTime(a,t+0.036); g.gain.exponentialRampToValueAtTime(0.0001,t+0.26); n.connect(f); f.connect(g); g.connect(out); }
+  else if(i===3||i===4){ if(st.oh){ const og=st.oh.gain; try{ if(og.cancelAndHoldAtTime) og.cancelAndHoldAtTime(t); else og.cancelScheduledValues(t); og.setTargetAtTime(0.0001,t,0.008); }catch(e){} st.oh=null; }
+    const open=i===4, dec=open?K.oh:K.hat, n=nsrc(c,t,dec,noise), f=filt('highpass',open?6500:7500), g=G_(); env(g,t,v*0.3,dec); n.connect(f); f.connect(g); g.connect(out); if(open) st.oh=g; }
+  else if(i===5){ if(K.perc==='rim'){ const o=c.createOscillator(), f=filt('bandpass',1700,3), g=G_(); o.type='square'; o.frequency.value=820; env(g,t,v*0.5,0.035); o.connect(f); f.connect(g); g.connect(out); o.start(t); o.stop(t+0.06); }
+    else { const n=nsrc(c,t,0.09,noise), f=filt('bandpass',6000,1.5), g=G_(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v*0.35,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.09); n.connect(f); f.connect(g); g.connect(out); } } }
+const DST={}; function drumNow(i,t,v){ drumV(ctx,A.pads,A.noise,DST,i,t,v==null?0.9:v,KITS[S.kit]||KITS.studio); }
+
+// ------------------------------------------------------------------ MIDI and the TP-7's SysEx (from Tinebox, 14 Oct to 1 Nov)
+const R={midi:null,outId:null,sysex:null,mq:[],mqN:0};
+async function midiConnect(){
+  if(!navigator.requestMIDIAccess){ setMidiNote('This browser has no Web MIDI. On iPhone, open this page in MIDIWeb Browser.'); return false; }
+  try{ try{ R.midi=await navigator.requestMIDIAccess({sysex:true}); R.sysex=true; }catch(e){ R.midi=await navigator.requestMIDIAccess(); R.sysex=false; }
+    R.midiNative=/\[native code\]/.test(Function.prototype.toString.call(navigator.requestMIDIAccess)); R.midi.onstatechange=midiState; midiList(); return true; }
+  catch(e){ setMidiNote('MIDI access was blocked ('+e.name+'). Allow MIDI for this page and try again.'); return false; } }
+function setMidiNote(t){ R.note=t; const el=$('#midiNote'); if(el) el.textContent=t; }
+function midiState(e){ try{ const p=e&&e.port; if(p&&/tp.?7/i.test(p.name||'')&&!/blue/i.test(p.name||'')&&p.state==='disconnected'){ IN.stale=true; log('app','TP-7 disconnected'); } }catch(x){} midiList(); }
+function midiList(){ if(!R.midi) return; const outs=[...R.midi.outputs.values()];
+  const tp=outs.find(o=>/tp.?7/i.test(o.name||'')&&!/blue/i.test(o.name||''))||outs.find(o=>/tp.?7/i.test(o.name||''));
+  R.outId=tp?tp.id:(outs[0]?outs[0].id:null); R.outName=tp?tp.name:(outs[0]?outs[0].name:'');
+  setMidiNote(tp?'TP-7 found.':outs.length?`No TP-7 among the MIDI outputs (${outs.map(o=>o.name).join(', ')}).`:'Connect the TP-7 by USB-C, then tap Connect again.');
+  R.midi.inputs.forEach(inp=>{ inp.onmidimessage=ev=>midiIn(ev,inp.name||'?'); }); renderAll(); }
+const midiReady=()=>!!(R.midi&&R.outId);
+// one ordered queue (MIDIWeb ignores send timestamps), tagged so a stop can take back what is still waiting
+function midiSendPerf(bytes,due,tag){ if(!R.midi||!R.outId) return; const now=performance.now(); if(due==null) due=now;
+  if(bytes[0]===0xF0||(bytes[0]&0xF0)===0xB0||(bytes[0]&0xF0)===0x90) sxLog('out',bytes,due);
+  const o=R.midi.outputs.get(R.outId); if(!o) return;
+  if(R.midiNative&&due>now+2&&!tag){ try{ o.send(bytes,due); }catch(e){} return; }
+  R.mq.push({due,bytes,n:++R.mqN,tag}); R.mq.sort((a,b)=>a.due-b.due||a.n-b.n); midiPump(); }
+function midiSend(bytes,at,tag){ midiSendPerf(bytes,at==null||!ctx?null:audioToPerf(at)+midiOffset(),tag); }
+const mNow=b=>midiSendPerf(b);
+function midiPump(){ const q=R.mq; clearTimeout(R.mqT); if(!q.length) return; const now=performance.now(), o=R.midi&&R.midi.outputs.get(R.outId);
+  while(q.length&&q[0].due<=now+1.5){ const m=q.shift(); if(o) try{ o.send(m.bytes); }catch(e){} }
+  if(q.length) R.mqT=setTimeout(midiPump,Math.max(0,q[0].due-performance.now()-1)); }
+function midiPurge(tag){ let n=0; for(let i=R.mq.length-1;i>=0;i--) if(R.mq[i].tag===tag){ R.mq.splice(i,1); n++; } if(n) log('st',`${n} scheduled message${n>1?'s':''} cancelled`); }
+
+const hx=d=>[...d].map(x=>x.toString(16).padStart(2,'0')).join(' ');
+function sx7(b){ const o=[]; for(let i=0;i<b.length;i+=8){ const m=b[i]; for(let j=0;j<7&&i+1+j<b.length;j++) o.push(b[i+1+j]|(((m>>j)&1)<<7)); } return o; }
+function pack7(v){ const o=[]; for(let i=0;i<v.length;i+=7){ const g=v.slice(i,i+7); let m=0; g.forEach((x,j)=>{ if(x&0x80) m|=1<<j; }); o.push(m,...g.map(x=>x&0x7F)); } return o; }
+const asc=v=>String.fromCharCode(...v.filter(x=>x>=32&&x<127));
+const u32le=(v,i)=>((v[i]|(v[i+1]<<8)|(v[i+2]<<16)|(v[i+3]<<24))>>>0);
+let sxId=0; const sxSent={};
+const SXOP={session:0x40,play:0x50,stop:0x51,edit:0x04,start:0x4a};
+const SXN={0x40:'Start Session',0x50:'Play',0x51:'Stop',0x04:'Edit mode toggle',0x4a:'Go to start',0x09:'Select track',0x0a:'Set input',0x0b:'Read track',0x0c:'Read input'};
+// 25 Oct, 18:00: input codes 0 line 1, 3 mic, 4 erase, 5 USB 1, 6 USB 2, 7 USB 3; one edit-mode setting for all tracks
+const TPIN={line1:0,mic:3,erase:4,usb1:5,usb2:6,usb3:7}, TPIN_NAME={0:'line 1',3:'mic',4:'erase',5:'USB 1',6:'USB 2',7:'USB 3'};
+const inName=c=>c==null?'?':TPIN_NAME[c]||`code ${c}`;
+function sxReq(cmd,payload){ sxId=sxId%4095+1; sxSent[sxId]=cmd===0x7F&&payload&&payload.length?payload[0]:'cmd '+hx([cmd]); return {id:sxId,bytes:[0xF0,0x00,0x20,0x76,0x19,0x40,0x60|((sxId>>7)&0x1F),sxId&0x7F,cmd,...pack7(payload||[]),0xF7]}; }
+function sxMsg(op){ return sxReq(0x7F,[op]).bytes; }
+function sxParse(d){ if(d[0]!==0xF0||d.length<9||d[1]!==0||d[2]!==0x20||d[3]!==0x76) return null; if(d[5]===0x33) return {debug:true,text:asc(d.slice(6,-1))}; if(d[4]!==0x19||d[5]!==0x40) return null;
+  const fl=d[6], id=((fl&0x1F)<<7)|d[7], cmd=d[8]; if(fl&0x40) return {kind:'event',id,cmd,v:sx7(d.slice(9,-1))};
+  const st=d[9]??0, v=sx7(d.slice(10,-1)); return {kind:'resp',id,cmd,st,v,reason:st?asc(v):''}; }
+function sxText(d){ const p=sxParse(d); if(!p) return hx(d); if(p.debug) return 'debug: '+p.text;
+  if(p.kind==='resp') return p.cmd===0x01?`greet reply: ${asc(p.v)}`:`reply to ${SXN[sxSent[p.id]]||sxSent[p.id]} #${p.id}: status ${p.st}${p.v.length?`, ${String.fromCharCode(p.v[0])} = ${p.v.slice(1).join(' ')}`:''}`;
+  const v=p.v; if(p.cmd!==0x7F) return 'event '+hx(v.slice(0,12));
+  if(v[0]===0x4D&&v.length>=5) return `position ${u32le(v,1)} ms`; if(v[0]===0x4F) return `armed = ${v[1]}`; if(v[0]===0x4E) return `playing = ${v[1]}`; if(v[0]===0x4B) return `file: ${(sxFile(d)||{}).path||'?'}`;
+  return `notice ${String.fromCharCode(v[0])} = ${v.slice(1).join(' ')}`; }
+function sxFile(d){ const p=sxParse(d); if(!p||p.kind!=='event'||p.cmd!==0x7F) return null; const v=p.v; if(v[0]!==0x4B||v.length<17) return null; const parts=[]; let t='';
+  for(let i=16;i<v.length;i++){ if(v[i]===0){ if(t) parts.push(t); t=''; } else t+=String.fromCharCode(v[i]); } if(t) parts.push(t); return {path:parts.join('/'),sr:u32le(v,1),frames:u32le(v,5),b9:v[9]}; }
+function sxLog(dir,d,t){ const L=TP.sxlog; if(!L) return; if(L.length>=600) return; const txt=d[0]===0xF0?sxText(d):(d[0]&0xF0)===0xB0?`CC ${d[1]} = ${d[2]}${(d[0]&15)?' ch '+((d[0]&15)+1):''}`:(d[0]&0xF0)===0x90?`note ${d[1]} on`:hx(d);
+  const last=L[L.length-1], pm=/^position (\d+) ms$/.exec(txt); if(pm&&dir==='in'&&last&&last.run){ last.n++; last.s=`in  position ${last.first} → ${pm[1]} ms (${last.n})`; return; }
+  L.push(pm&&dir==='in'?{t:Math.round(t),s:'in  '+txt,run:true,first:pm[1],n:1}:{t:Math.round(t),s:(dir==='in'?'in  ':'out ')+txt}); }
+
+// the TP-7's own reports: position (M) every ~200 ms while the tape moves, armed (O), playing (N), file (K)
+const TP={pos:null,posLog:[],arm:null,play:null,file:null,info:null,listeners:new Set(),sxlog:null};
+function midiIn(ev,port){ const d=[...ev.data], now=evT(ev);
+  if(/tp.?7/i.test(port)&&!/blue/i.test(port)&&d[0]===0xF0){ sxLog('in',d,now); TP.listeners.forEach(f=>{ try{ f(d,now); }catch(e){} });
+    const p=sxParse(d); if(!p) return; if(p.debug){ log('err','TP-7 debug frame: '+p.text); return; }
+    if(p.kind==='event'&&p.cmd===0x7F){ const v=p.v;
+      if(v[0]===0x4D&&v.length>=5){ TP.pos=u32le(v,1); TP.posLog.push([now,TP.pos]); if(TP.posLog.length>3000) TP.posLog.splice(0,1500); }
+      else if(v[0]===0x4F){ const o=TP.arm; TP.arm={v:v[1],t:now}; if(!o||o.v!==v[1]) log('tp',`armed = ${v[1]}`); }
+      else if(v[0]===0x4E){ const o=TP.play; TP.play={v:v[1],t:now}; if(!o||o.v!==v[1]) log('tp',`playing = ${v[1]}`); }
+      else if(v[0]===0x4B){ TP.file=sxFile(d); } }
+    if(p.kind==='resp'&&p.cmd===0x01){ const o={}; asc(p.v).split(';').forEach(kv=>{ const i=kv.indexOf(':'); if(i>0) o[kv.slice(0,i).replace(/^[^a-z]+/i,'')]=kv.slice(i+1); }); if(o.product) TP.info=o; }
+    return; }
+  if(port&&!/tp.?7/i.test(port)) PED.midi&&PED.midi(d,port); }
+async function sxAsk(cmd,payload,ms){ const q=sxReq(cmd,payload); let got=null; const f=d=>{ const p=sxParse(d); if(p&&p.kind==='resp'&&p.id===q.id) got=p; };
+  TP.listeners.add(f); mNow(q.bytes); await waitFor(()=>!!got,ms||400,5); TP.listeners.delete(f); return got; }
+async function sxAlive(){ const r=await sxAsk(0x01,[],900); return r?(/mode:([a-z_]+)/i.exec(asc(r.v))||[])[1]||'?':null; }
+async function tpRead(op){ const r=await sxAsk(0x7F,[op],500); return r&&!r.st&&r.v.length>=2?r.v[1]:null; }
+const tpEditRead=()=>tpRead(0x0b); // ff = not in edit mode, otherwise the selected track (25 Oct)
+async function tpSetEdit(on){ const v=await tpEditRead(); if(v!=null&&(v!==0xff)===on) return {sent:false,after:v};
+  mNow([0xB0,14,0]); mNow(sxMsg(SXOP.edit)); await sleep(700); return {sent:true,after:await tpEditRead()}; }
+async function tpSel(track,input){ const a=await sxAsk(0x7F,[0x09,track],400); if(!(a&&!a.st)) return false; const b=await sxAsk(0x7F,[0x0a,input],400); if(!(b&&!b.st)) return false; TP.trk=track; TP.inp=input; return true; }
+// track first, input once the track took (31 Oct: a refused track change put the input on the wrong track); wait for armed = 0 first
+async function tpSelSafe(track,input){ if(TP.arm&&TP.arm.v===1){ TP.perf=false; mNow([0xB0,14,0]); } await waitFor(()=>!TP.arm||TP.arm.v===0,600,10);
+  for(let i=0;i<4;i++){ if(await tpSel(track,input)){ const t=await tpRead(0x0b), n=await tpRead(0x0c); if(t===track&&n===input) return true; } await sleep(150); }
+  log('err',`the TP-7 did not take track ${track+1}, ${inName(input)}`); return false; }
+async function tpEditTo(track,input){ const ed=await tpSetEdit(true); if(ed.after==null) return 'The TP-7 does not answer.'; if(ed.after===0xff) return 'Edit mode did not come on.';
+  return (await tpSelSafe(track,input))?'':`The TP-7 did not take track ${track+1}, ${inName(input)}.`; }
+async function tpPosNow(){ TP.pos=null; mNow(sxMsg(SXOP.session)); await sleep(300); return TP.pos==null?0:TP.pos; }
+async function tpFileNow(){ TP.file=null; mNow(sxMsg(SXOP.session)); await waitFor(()=>!!TP.file,1500); return TP.file; }
+// back to the start: 0x4a (24 Oct: also in edit mode, where stop does not rewind; 18 of 18), checked by the position it reports
+async function tpToStart(){ mNow([0xB0,14,0]); mNow(sxMsg(SXOP.stop)); await sleep(250); TP.pos=null; mNow(sxMsg(SXOP.start)); if(await waitFor(()=>TP.pos===0,500,10)) return true;
+  await sleep(150); if((await tpPosNow())<=150) return true; mNow(sxMsg(SXOP.start)); await sleep(500); return (await tpPosNow())<=150; }
+async function tpArm(on){ mNow([0xB0,14,on?127:0]); return waitFor(()=>TP.arm&&TP.arm.v===(on?1:0),600,10); }
+async function tpAlive(){ if(R.sysex!==true) return false; if(await sxAlive()) return true; await midiConnect(); await sleep(900); return !!(await sxAlive()); }
+function tpProblem(){ if(!midiReady()) return 'Connect the TP-7 first (Settings, Connect).'; if(R.sysex!==true) return 'SysEx is not allowed: reconnect and allow SysEx.'; return ''; }
+const fileTxt=f=>f?`${f.path.split('/').pop()} (${(f.frames/Math.max(1,f.sr)).toFixed(2)} s, ${f.b9} track${f.b9===1?'':'s'})`:'unknown';
+// a cue note: tap it (it jumps and plays while held), then stop, so the tape waits on the cue (24 Oct test 10 C)
+async function tpCue(n){ mNow([0xB0,17,0]); mNow([0x90,n,100]); await sleep(90); mNow([0x80,n,0]); await sleep(150); mNow(sxMsg(SXOP.stop)); await sleep(350); }
+// the performance stance: edit mode, track 1, line 1, tape standing, armed. The guitar then reaches the app (and you), nothing records.
+async function tpPerform(){ const e=tpProblem(); if(e) return e; mNow([0xB0,17,0]); mNow(sxMsg(SXOP.stop)); await sleep(120);
+  const r=await tpEditTo(0,TPIN.line1); if(r) return r; if(!(await tpArm(true))) return 'The TP-7 did not report armed.'; TP.perf=true; return ''; }
+async function tpUnperform(){ TP.perf=false; if(TP.arm&&TP.arm.v===0) return true; return tpArm(false); }
+
+// ================================================================== the looper (in the app)
+// S.ses: {id, bpm, file, fileEnd, cues:{note:tape s}, secs:[{id,name,bars,L,s,layers:[{id,type,state,printed,gain,muted,preset,oct}]}], cur, rt}
+// E.st: idle, prep, ready (session ready, nothing yet), first (a section's first pass), loop, stopped, printing, tape (TP-7 playback)
+const E={st:'idle',msg:'',small:'',play:null,next:null,rec:null,gen:0,ci:null,bufs:new Map(),raws:new Map(),busy:false};
+const TAPE0=2.0, CAP=32; // the first section starts 2 s into the TP-7 recording (a lead-in for the print passes); 32 bars at most
+const uid=()=>Math.random().toString(36).slice(2,10);
+const SES=()=>S.ses, SEC=k=>S.ses&&S.ses.secs[k];
+const barS=()=>240/(S.ses?S.ses.bpm:100), beatS=()=>60/(S.ses?S.ses.bpm:100);
+const TRACK={gtr:0,syn:1,drm:2}, TNAME={gtr:'Guitar',syn:'Synth',drm:'Drums'};
+function say(m,small){ if(m!=null&&m!==E.msg) log('say',m); if(m!=null) E.msg=m; if(small!=null) E.small=small; renderScreen(); }
+const sleepTo=t=>sleep(Math.max(0,(t-ctx.currentTime)*1000));
+const at=(t,f)=>setTimeout(f,Math.max(0,(t-ctx.currentTime)*1000));
+
+// ------------------------------------------------------------------ the clock and the metronome
+const CLK={on:false,z0:0,n:0,clicks:[]};
+function clkStart(z){ const b=beatS(); CLK.z0=z; CLK.n=Math.ceil((ctx.currentTime+0.02-z)/b-1e-6); clkClear(z-0.02); CLK.on=true; }
+function clkStop(){ CLK.on=false; clkClear(ctx?ctx.currentTime:0); }
+function clkClear(after){ CLK.clicks=CLK.clicks.filter(c=>{ if(c.t>after){ c.g.forEach(g=>{ try{ g.disconnect(); }catch(e){} }); return false; } return c.t>ctx.currentTime-0.3; }); }
+const clkNext=t=>{ const b=barS(); return CLK.z0+Math.ceil((t-CLK.z0)/b-1e-6)*b; };
+const clkNear=t=>{ const b=barS(); return CLK.z0+Math.round((t-CLK.z0)/b)*b; };
+function tick(){ if(!ctx||ctx.state!=='running') return; const now=ctx.currentTime, ahead=now+0.15, b=beatS();
+  if(CLK.on&&S.ses){ for(;;){ const t=CLK.z0+CLK.n*b; if(t>ahead) break; if(t>=now+0.005&&S.metroOn&&!inCount(t)) CLK.clicks.push({t,g:knock(t,((CLK.n%4)+4)%4===0)}); CLK.n++; } }
+  // a drum take replays what it has so far, from the next time round
+  const r=E.rec, P=E.play; if(r&&r.type==='drm'&&P){ for(const hh of r.hits){ for(;;){ const t=P.z+(hh.r+hh.n)*P.L+hh.ph; if(t>ahead) break; if(t>=now+0.005) drumV(ctx,A.pads,A.noise,DST,hh.i,t,hh.v,KITS[S.kit]); hh.n++; } } } }
+// the count-in: the bar before z gets a beep on each beat still ahead in place of the knock, and a large count on screen
+function countIn(z){ countOff(); const b=beatS(), c=E.ci={a:z-4*b,b:z,beat:b,g:[]}; clkClear(c.a-0.01);
+  for(let i=0;i<4;i++){ const t=z-(4-i)*b; if(t<ctx.currentTime+0.03) continue; c.g.push(beep(t,i+1)); }
+  // knocks already scheduled after the count-in bar must come back: let the clock reschedule from there
+  CLK.n=Math.min(CLK.n,Math.ceil((z-CLK.z0)/b-1e-6)); }
+function countOff(){ const c=E.ci; if(!c) return; c.g.forEach(g=>{ try{ g.disconnect(); }catch(e){} }); E.ci=null; }
+const inCount=t=>{ const c=E.ci; return !!(c&&t>=c.a-0.01&&t<c.b-0.01); };
+
+// ------------------------------------------------------------------ loop playback: one looping source per layer
+function mkBuf(y,N){ const b=ctx.createBuffer(1,N,ctx.sampleRate), d=b.getChannelData(0); d.set(y.length>N?y.subarray(0,N):y); return b; }
+function phase(t,z,L){ return ((t-z)%L+L)%L; }
+function srcAdd(P,id,s){ const a=P.srcs.get(id)||[]; a.push(s); P.srcs.set(id,a); }
+function gainOf(l){ return l.muted?0:(l.gain==null?1:l.gain); }
+// a looping source for layer l in loop P from time t (at the right phase)
+function layerPlay(P,l,t){ const buf=E.bufs.get(l.id); if(!buf||!P) return; t=Math.max(t,ctx.currentTime+0.02);
+  const src=ctx.createBufferSource(), g=ctx.createGain(); src.buffer=buf; src.loop=true; src.loopStart=0; src.loopEnd=buf.duration; g.gain.value=gainOf(l); src.connect(g); g.connect(A.loop);
+  src.start(t,phase(t,P.z,P.L)*buf.duration/P.L); srcAdd(P,l.id,{src,g,loop:true}); }
+// round 1 of a fresh loop: buffer part [p0, p1) of the loop (in seconds), played once at its place in the round starting at z
+function layerOnce(P,id,buf,p0,p1,z){ const now=ctx.currentTime+0.02; let t=z+p0, off=p0; if(t<now){ off+=now-t; t=now; } if(off>=p1) return;
+  const src=ctx.createBufferSource(), g=ctx.createGain(); src.buffer=buf; src.connect(g); g.connect(A.loop); src.start(t,off,p1-off); srcAdd(P,id,{src,g}); }
+function layerSilence(P,id,t,fade){ const a=P&&P.srcs.get(id); if(!a) return; t=Math.max(t,ctx.currentTime);
+  a.forEach(s=>{ try{ s.g.gain.cancelScheduledValues(t); s.g.gain.setValueAtTime(s.g.gain.value,t); s.g.gain.linearRampToValueAtTime(0,t+(fade||0.01)); s.src.stop(t+(fade||0.01)+0.01); }catch(e){} }); P.srcs.delete(id); }
+function loopStart(k,z){ const sec=SEC(k), P={k,z,L:sec.L,srcs:new Map()}; sec.layers.forEach(l=>layerPlay(P,l,z)); return P; }
+function loopEnd(P,t){ if(!P) return; [...P.srcs.keys()].forEach(id=>layerSilence(P,id,t,0.012)); }
+function layerGain(l){ const P=E.play; if(P&&P.srcs.get(l.id)) P.srcs.get(l.id).forEach(s=>{ try{ s.g.gain.setTargetAtTime(gainOf(l),ctx.currentTime,0.01); }catch(e){} }); }
+async function ensureBufs(k){ const sec=SEC(k); if(!sec) return; for(const l of sec.layers){ if(E.bufs.get(l.id)) continue; const d=await IDB.get(S.ses.id+':'+l.id);
+    if(d&&d.y){ const b=ctx.createBuffer(1,d.y.length,d.sr||ctx.sampleRate); b.getChannelData(0).set(d.y); E.bufs.set(l.id,b); } else log('err',`layer ${l.id}: no audio stored`); } }
+function storeLayer(l,y,sr){ IDB.put(S.ses.id+':'+l.id,{y,sr}); }
+
+// ------------------------------------------------------------------ a session: a new TP-7 recording, the performance stance, the round trip
+async function prepSession(bpm,tapZ){ const e=tpProblem(); if(e){ say(e); return; } initAudio(); if(!ctx) return;
+  if(['prep','printing'].includes(E.st)) return; await stopAll(true); E.st='prep'; const G0=++E.gen; say(`New session at ${Math.round(bpm)} bpm: checking the TP-7…`,'');
+  const gone=()=>G0!==E.gen, fail=m=>{ if(!gone()){ E.st=S.ses&&S.ses.secs.length?'stopped':'idle'; say(m); } log('err',m); return m; };
+  if(!(await tpAlive())) return fail('The TP-7 does not answer over MIDI. Check the cable, then Settings, Connect.');
+  if(!(await openInput())) return fail('No audio input: the app cannot hear the guitar.');
+  say(`New session at ${Math.round(bpm)} bpm: making a new TP-7 recording…`);
+  // 1. half a second in normal mode with the app silent: a new recording with one track per record source (line 1, USB 1, USB 2)
+  await tpUnperform(); await tpSetEdit(false); if(gone()) return; if(!(await tpToStart())) return fail('The tape did not go back to the start.');
+  A.master.gain.value=0; let T=ctx.currentTime+0.5; midiSend([0xB0,14,127],T-0.35); midiSend(sxMsg(SXOP.session),T-0.25); midiSend(sxMsg(SXOP.play),T); midiSend(sxMsg(SXOP.stop),T+0.5); midiSend([0xB0,14,0],T+0.55);
+  await sleepTo(T+0.7); A.master.gain.value=1; await sleep(400); if(gone()) return; const f=await tpFileNow(); if(gone()) return;
+  // 2. that half second recorded the guitar on track 1 too: wipe it (input erase, armed over the first second)
+  say('New session: wiping track 1 at the start…'); let r=await tpEditTo(0,TPIN.erase); if(r) return fail(r); if(!(await tpToStart())) return fail('The tape did not go back to the start.');
+  T=ctx.currentTime+0.4; midiSend([0xB0,14,127],T-0.3); midiSend(sxMsg(SXOP.play),T); midiSend([0xB0,14,0],T+1.0); midiSend(sxMsg(SXOP.stop),T+1.06); await sleepTo(T+1.4); if(gone()) return;
+  // 3. the round trip: track 1 from USB 1, armed while standing, four clicks out and back in
+  say('New session: measuring the round trip…'); r=await tpEditTo(0,TPIN.usb1); if(r) return fail(r); await tpToStart(); await tpArm(true);
+  const rt=await measureRT(); await tpArm(false); if(gone()) return;
+  if(rt.rt!=null){ S.tp.rt[setupKey()]=rt.rt; } else log('err',`round trip not measured (${rt.why})`);
+  // 4. the performance stance: track 1, line 1, armed, standing
+  r=await tpPerform(); if(r) return fail(r); if(gone()) return;
+  S.ses={id:uid(),bpm:Math.round(bpm*10)/10,created:Date.now(),file:f,fileEnd:f?f.frames/Math.max(1,f.sr):0.5,cues:{},secs:[],cur:0,rt:rt.rt!=null?rt.rt:RT()}; save();
+  E.bufs.clear(); E.raws.clear(); E.st='ready';
+  const w=[]; if(!f) w.push('The TP-7 sent no file notice.'); else if(f.b9<3) w.push(`The new recording has ${f.b9} track${f.b9>1?'s':''}: set the TP-7's record sources to line 1, USB 1 and USB 2 once.`);
+  if(rt.rt==null) w.push(`Round trip not measured (${rt.why}); takes may sit off the beat.`);
+  clkStart(tapZ!=null?alignBar(tapZ):clkFirst()); log('st',`session ready: ${S.ses.bpm} bpm, ${fileTxt(f)}, round trip ${msTxt(S.ses.rt)}`);
+  say(`Ready at ${S.ses.bpm} bpm.`,`${w.join(' ')} Switch 1 records guitar, switch 5 synth. Round trip ${msTxt(S.ses.rt)}.`); renderAll(); }
+const clkFirst=()=>ctx.currentTime+0.1;
+// clicks out through USB 1, back through the TP-7's track 1 monitor: graph time out → graph time in
+async function measureRT(){ const n=5, base=ctx.currentTime+0.2, step=0.3, sr=ctx.sampleRate; const was=S.metroOn; S.metroOn=false; const out=[];
+  for(let i=0;i<n;i++){ const t=base+i*step, o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=1000; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.25,t+0.0005); g.gain.setValueAtTime(0.25,t+0.004); g.gain.linearRampToValueAtTime(0,t+0.005); o.connect(g); g.connect(A.test); o.start(t); o.stop(t+0.01); out.push(t); }
+  await sleepTo(base+n*step+0.5); S.metroOn=was; const res=[];
+  for(const t of out){ const x=inSlice(t-0.05,t+0.45); if(!x){ continue; } const k0=Math.round(0.05*sr); let fl=0; for(let i=0;i<k0;i++) fl=Math.max(fl,Math.abs(x[i]));
+    const thr=Math.max(0.01,fl*6); for(let i=k0;i<x.length;i++){ if(Math.abs(x[i])>thr){ res.push((i-k0)/sr); break; } } }
+  if(res.length<3) return {rt:null,why:res.length?`${res.length} of ${n} clicks came back`:'no click came back',res};
+  const m=medOf(res), ok=res.filter(v=>Math.abs(v-m)<0.003); if(ok.length<3) return {rt:null,why:`clicks came back ${res.map(v=>(v*1000).toFixed(1)).join(', ')} ms apart`,res};
+  return {rt:ok.reduce((a,b)=>a+b,0)/ok.length,res}; }
+
+// ------------------------------------------------------------------ the first pass of a section: from the bar line nearest the press
+function firstStart(type,S0,via){ E.rec={type,first:true,S0,via:via||null}; E.st='first'; E.play=null; if(type==='syn') preview(true);
+  E.capT=at(S0+CAP*barS()-0.3,()=>{ if(E.rec&&E.rec.first&&E.rec.S0===S0) firstClose(S0+CAP*barS(),null); });
+  say(via==='next'?'Recording a new section. Switch 1 (guitar) or 5 (synth) closes it.':type==='syn'?'Recording a synth loop. Switch 5 again closes it.':'Recording. Switch 1 again closes the loop.',''); renderAll(); }
+async function firstClose(h,closer,stopAfter){ const r=E.rec; if(!r||!r.first) return; const bar=barS();
+  if(h-r.S0<0.5*bar&&!stopAfter){ say('Too soon to close: tap again at the end of your loop.'); return; }
+  clearTimeout(E.capT); const n=clamp(Math.round((h-r.S0)/bar),1,CAP), E1=r.S0+n*bar, L=n*bar, type=r.via==='next'&&closer?closer:r.type;
+  E.rec=null; preview(false);
+  const ses=S.ses, k=ses.secs.length, s=k?ses.secs[k-1].s+ses.secs[k-1].L:TAPE0;
+  const sec={id:uid(),name:LETTERS[k%26]+(k>=26?Math.floor(k/26)+1:''),bars:n,L,s,layers:[]}, l=newLayer(type); sec.layers.push(l); ses.secs.push(sec); ses.cur=k; save();
+  log('st',`section ${sec.name}: ${n} bar${n>1?'s':''}, first pass ${TNAME[type]}`);
+  let P=null; if(!stopAfter){ P=E.play={k,z:E1,L,srcs:new Map()}; E.st='loop'; say(`Section ${sec.name}: ${n} bar${n>1?'s':''}, looping.`,pendTxt()); }
+  renderAll();
+  // round 1 plays what is in at once, the rest of round 1 once it is in; from round 2 one looping source
+  const sr=ctx.sampleRate, N=Math.round(L*sr), availH=IN.w/IN.sr-RT()-0.005, a=Math.min(E1,availH);
+  if(P&&a>r.S0+0.05){ const x=takeSlice(r.S0,a); if(x){ fadeEdge(x,sr,0.0015,0); const b=mkBuf(x,N); layerOnce(P,l.id,b,0,a-r.S0,E1); } }
+  await sleepTo(takeReadyAt(E1)); let x=takeSlice(r.S0,E1); if(!x){ log('err','the first pass did not reach the app'); x=new Float32Array(N); }
+  fadeEdge(x,sr,0.0015,0.0015); const y=new Float32Array(N); y.set(x.subarray(0,N)); const buf=mkBuf(y,N); E.bufs.set(l.id,buf);
+  if(type==='syn') E.raws.set(l.id,{x:y,off:0,N}); storeLayer(l,y,sr); if(type==='syn') IDB.put(S.ses.id+':'+l.id+':raw',{x:y,off:0,N,sr});
+  if(P&&E.play===P){ if(a<E1) layerOnce(P,l.id,buf,Math.max(0,a-r.S0),L,E1); layerPlay(P,l,E1+L); }
+  if(type==='syn') synthLayer(l,k);
+  if(stopAfter) say(`Section ${sec.name}: ${n} bar${n>1?'s':''}. Stopped.`,pendTxt()); }
+function fadeEdge(x,sr,a,b){ const na=Math.min(x.length,Math.round(a*sr)), nb=Math.min(x.length,Math.round(b*sr)); for(let i=0;i<na;i++) x[i]*=i/na; for(let i=0;i<nb;i++) x[x.length-1-i]*=i/nb; }
+function newLayer(type){ return {id:uid(),type,state:S.autoAccept?'accepted':'pending',printed:false,gain:type==='syn'?S.synth.level:1,muted:false,preset:type==='syn'?S.synth.preset:null,oct:type==='syn'?S.synth.oct:0,glide:!!S.synth.glide,snap:!!S.synth.snap,created:Date.now()}; }
+// switch 2 in the first bar of a first pass: a false start, nothing kept
+function firstCancel(){ E.cancelled=true; clearTimeout(E.capT); E.rec=null; preview(false); E.st=S.ses.secs.length?'stopped':'ready'; if(E.st==='stopped') clkStop(); say('Cancelled: nothing kept.',''); renderAll(); }
+
+// ------------------------------------------------------------------ layers while a section loops: tap on, tap off
+function layerStart(type,h){ const P=E.play; if(!P) return; E.rec={type,first:false,h0:h,k:P.k,z:P.z,L:P.L,hits:type==='drm'?[]:null};
+  if(type==='syn') preview(true); say(type==='drm'?'Recording drums: play the pads. Rec again stops.':type==='syn'?'Recording a synth layer… switch 5 again stops it.':'Recording a guitar layer… switch 1 again stops it.',''); renderAll(); }
+async function layerStop(h,quiet){ const r=E.rec; if(!r||r.first) return; E.rec=null; preview(false); const sec=SEC(r.k), sr=ctx.sampleRate, N=Math.round(r.L*sr), l=newLayer(r.type);
+  if(r.type==='drm'&&!r.hits.length){ if(!quiet) say('No hits: nothing kept.'); renderAll(); return; }
+  if(h-r.h0<0.15&&r.type!=='drm'){ if(!quiet) say('Too short: nothing kept.'); renderAll(); return; }
+  l._busy=true; sec.layers.push(l); save(); renderAll(); log('st',`${TNAME[r.type]} layer on ${sec.name}: ${(h-r.h0).toFixed(2)} s`);
+  let y;
+  if(r.type==='drm') y=await renderDrums(r.hits,r.L);
+  else { await sleepTo(takeReadyAt(h)); const pre=0.03, x=takeSlice(r.h0-pre,h); if(!x){ l._busy=false; sec.layers.splice(sec.layers.indexOf(l),1); say('The take did not reach the app: nothing kept.'); renderAll(); return; }
+    fadeEdge(x,sr,pre,0.008); const off=Math.round(phase(r.h0-pre,r.z,r.L)*sr); y=G.fold(x,N,off); if(r.type==='syn'){ E.raws.set(l.id,{x,off,N}); IDB.put(S.ses.id+':'+l.id+':raw',{x,off,N,sr}); } }
+  l._busy=false; E.bufs.set(l.id,mkBuf(y,N)); storeLayer(l,y,sr);
+  if(E.play&&E.play.k===r.k) layerPlay(E.play,l,ctx.currentTime+0.02);
+  if(r.type==='syn') synthLayer(l,r.k);
+  if(!quiet) say(`${TNAME[r.type]} layer added: switch 6 keeps it, double-tap 6 drops it.`,pendTxt()); renderAll(); }
+
+// ------------------------------------------------------------------ synth layers: rendered from the guitar take in a worker
+// The raw take plays until the synth is ready (a second or a few), then the synth takes over at once.
+let SW=null; const SWQ=new Map();
+function synthWorker(){ if(SW!==null) return SW; try{ const src=`${GDSP.toString()}\nconst G=GDSP();\nonmessage=e=>{ const d=e.data; let r; try{ const tr=G.transcribe(d.x,d.sr,{clean:true}); const y=G.render(tr,d.sr,d.x.length/d.sr+2.5,d.preset,{oct:d.oct,snap:d.snap,glide:d.glide}); const f=G.fold(y,d.N,d.off); const pk=G.peakOf(f), g=pk>0?0.4/pk:0; for(let i=0;i<f.length;i++) f[i]*=g; const k=G.keyOf(tr.notes); r={y:f,notes:tr.notes.length,key:k?k.tonic+':'+k.mode:null}; }catch(x){ r={err:String(x&&x.stack||x)}; } postMessage({id:d.id,r},r.y?[r.y.buffer]:[]); };`;
+  SW=new Worker(URL.createObjectURL(new Blob([src],{type:'application/javascript'}))); SW.onmessage=e=>{ const f=SWQ.get(e.data.id); if(f){ SWQ.delete(e.data.id); f(e.data.r); } }; }catch(e){ SW=false; } return SW; }
+function synthRun(d){ return new Promise(res=>{ const w=synthWorker(), id=uid(); d.id=id;
+  if(!w){ setTimeout(()=>{ try{ const tr=G.transcribe(d.x,d.sr,{clean:true}), y=G.render(tr,d.sr,d.x.length/d.sr+2.5,d.preset,{oct:d.oct,snap:d.snap,glide:d.glide}), f=G.fold(y,d.N,d.off), pk=G.peakOf(f); for(let i=0;i<f.length;i++) f[i]*=pk>0?0.4/pk:0; res({y:f,notes:tr.notes.length}); }catch(e){ res({err:String(e)}); } },10); return; }
+  SWQ.set(id,res); w.postMessage(d); }); }
+async function synthLayer(l,k){ let raw=E.raws.get(l.id); if(!raw){ const d=await IDB.get(S.ses.id+':'+l.id+':raw'); if(d){ raw=d; E.raws.set(l.id,d); } } if(!raw) return;
+  l._rendering=true; renderAll(); const t0=performance.now();
+  const r=await synthRun({x:raw.x.slice(),sr:ctx.sampleRate,N:raw.N,off:raw.off,preset:l.preset||'pad',oct:l.oct||0,snap:!!l.snap,glide:!!l.glide});
+  l._rendering=false; if(r.err||!r.y){ log('err','synth render: '+(r.err||'nothing')); say('The synth could not be rendered: the raw take stays.'); renderAll(); return; }
+  l.notes=r.notes; log('st',`synth ${l.preset}: ${r.notes} notes in ${Math.round(performance.now()-t0)} ms`);
+  const buf=mkBuf(r.y,raw.N); E.bufs.set(l.id,buf); storeLayer(l,r.y,ctx.sampleRate); save();
+  const P=E.play; if(P&&P.k===k&&P.srcs.get(l.id)){ const t=ctx.currentTime+0.04; layerSilence(P,l.id,t,0.03); layerPlay(P,l,t); }
+  renderAll(); }
+
+// ------------------------------------------------------------------ drums: what you play on the pads, as hits on the loop
+function padHit(i,ev){ initAudio(); const now=ctx.currentTime; drumNow(i,now,0.9);
+  if(PADCAL.on){ PADCAL.hits.push(p2h(evT(ev))); if(PADCAL.hits.length>=8) padCalDone(); return; }
+  const r=E.rec; if(r&&r.type==='drm'&&E.play){ const P=E.play, fix=(S.padFix||0)/1000, h=p2h(evT(ev))-fix; let ph=phase(h,P.z,P.L);
+    if(S.quant){ const q=barS()/S.quant*4; ph=(Math.round(ph/q)*q)%P.L; } const rr=Math.floor((h-P.z)/P.L); r.hits.push({ph,i,v:0.9,r:rr,n:1}); } }
+async function renderDrums(hits,L){ const sr=ctx.sampleRate, N=Math.round(L*sr), tail=Math.round(2*sr), OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+  const y=new Float32Array(N); if(!OAC) return y; const oc=new OAC(1,N+tail,sr), nb=oc.createBuffer(1,sr*2,sr), d=nb.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  const out=oc.createGain(); out.gain.value=S.lv.pads; out.connect(oc.destination); const st={}; hits.slice().sort((a,b)=>a.ph-b.ph).forEach(h=>drumV(oc,out,nb,st,h.i,h.ph,h.v,KITS[S.kit]||KITS.studio));
+  const rb=await new Promise(res=>{ const p=oc.startRendering(); if(p&&p.then) p.then(res); else oc.oncomplete=e=>res(e.renderedBuffer); }), z=rb.getChannelData(0);
+  for(let i=0;i<N;i++) y[i]=z[i]; for(let i=N;i<z.length;i++) y[(i-N)%N]+=z[i]; return y; }
+// pad timing: tap any pad on 8 clicks; the median offset from the beat is the touch and output delay
+const PADCAL={on:false,hits:[]};
+function padCalStart(){ if(!CLK.on||!S.metroOn){ toast('Start a session or a loop with the metronome on first.'); return; } PADCAL.on=true; PADCAL.hits=[]; say('Pad timing: tap a pad on each of the next 8 clicks.'); renderAll(); }
+function padCalDone(){ PADCAL.on=false; const b=beatS(), off=PADCAL.hits.map(h=>{ const n=Math.round((h-CLK.z0)/b); return h-(CLK.z0+n*b); }), m=medOf(off);
+  const sp=Math.max(...off)-Math.min(...off); if(sp>0.08){ say('Pad timing: your taps were too uneven to tell.',`They spread over ${Math.round(sp*1000)} ms. Try again, tapping right on the clicks.`); renderAll(); return; } S.padFix=Math.round(clamp(m,-0.05,0.15)*1000); save(); log('st',`pad timing: offsets ${off.map(v=>Math.round(v*1000)).join(', ')} ms → ${S.padFix} ms`);
+  say(`Pad timing set: hits move ${S.padFix} ms earlier.`,`Your taps spread over ${Math.round(sp*1000)} ms.`); renderAll(); }
+
+// ------------------------------------------------------------------ accept, dismiss
+const pending=()=>{ const out=[]; (S.ses?S.ses.secs:[]).forEach((s,k)=>s.layers.forEach(l=>{ if(l.state==='pending') out.push({l,k}); })); return out; };
+const toPrint=()=>{ const out=[]; (S.ses?S.ses.secs:[]).forEach((s,k)=>s.layers.forEach(l=>{ if(l.state==='accepted'&&!l.printed&&!l._busy&&!l.muted) out.push({l,k}); })); return out; };
+function pendTxt(){ const p=pending().length, q=toPrint().length; return [p?`${p} layer${p>1?'s':''} to keep or drop (switch 6)`:'',q?`${q} to print when you stop`:''].filter(Boolean).join(' · '); }
+function newestPending(){ const p=pending(); const cur=p.filter(x=>x.k===(S.ses?S.ses.cur:0)); const a=cur.length?cur:p; return a.sort((x,y)=>(y.l.created||0)-(x.l.created||0))[0]||null; }
+function accept(x){ if(!x) return; x.l.state='accepted'; save(); log('st',`kept ${TNAME[x.l.type]} on ${SEC(x.k).name}`); say(`${TNAME[x.l.type]} layer kept.`,pendTxt()); renderAll(); }
+function dismiss(x){ if(!x) return; const sec=SEC(x.k), l=x.l; layerSilence(E.play&&E.play.k===x.k?E.play:null,l.id,ctx.currentTime,0.03);
+  sec.layers.splice(sec.layers.indexOf(l),1); E.bufs.delete(l.id); E.raws.delete(l.id); IDB.del(S.ses.id+':'+l.id); IDB.del(S.ses.id+':'+l.id+':raw');
+  log('st',`dropped ${TNAME[l.type]} on ${sec.name}`);
+  // a new section whose only layer went: the section goes too (if it is the last one and nothing of it is on the tape)
+  const ses=S.ses; if(!sec.layers.length&&x.k===ses.secs.length-1&&!sec.layers.some(q=>q.printed)){ if(E.play&&E.play.k===x.k){ loopEnd(E.play,ctx.currentTime); E.play=null; E.st=ses.secs.length>1?'stopped':'ready'; if(E.st==='stopped') clkStop(); }
+    ses.secs.pop(); ses.cur=Math.max(0,ses.secs.length-1); say(`Section ${sec.name} dropped.`,pendTxt()); }
+  else say(`${TNAME[l.type]} layer dropped.`,pendTxt()); save(); renderAll(); }
+
+// ------------------------------------------------------------------ moving between sections: at the end of this time round, after a count-in
+function nextWrap(P,min){ const now=ctx.currentTime; return P.z+Math.ceil((now+min-P.z)/P.L-1e-9)*P.L; }
+async function goSection(k2,newSec){ const P=E.play; if(!P||E.next) return; const W=nextWrap(P,0.35); countIn(W);
+  if(E.rec&&!E.rec.first) await layerStop(ctx.currentTime,true);
+  loopEnd(P,W); const G0=E.gen;
+  if(newSec){ E.next={W,newSec:true}; say('A new section starts at the end of this time round…'); at(W-0.01,()=>{ if(G0!==E.gen) return; E.next=null; firstStart('gtr',W,'next'); }); }
+  else { await ensureBufs(k2); if(G0!==E.gen) return; const P2=loopStart(k2,W); E.next={W,k:k2}; S.ses.cur=k2; say(`Section ${SEC(k2).name} next…`);
+    at(W-0.005,()=>{ if(G0!==E.gen) return; E.play=P2; E.next=null; say(`Section ${SEC(k2).name} is looping.`,pendTxt()); renderAll(); }); }
+  renderAll(); }
+// from a stop: a count-in bar, then section k loops (o.rec: start a layer of that type on its first beat; o.newSec: a first pass)
+async function playFrom(k,o){ o=o||{}; const e=await perfReady(); if(e) say(e); const G0=++E.gen;
+  if(!o.newSec) await ensureBufs(k); if(G0!==E.gen) return; await openInput();
+  const bar=barS(), z=ctx.currentTime+0.35+bar; clkStart(z); countIn(z);
+  if(o.newSec){ E.st='first'; E.next={W:z,newSec:true}; say('Count-in: a new section…'); at(z-0.01,()=>{ if(G0!==E.gen) return; E.next=null; firstStart(o.rec||'gtr',z,'next'); }); renderAll(); return; }
+  S.ses.cur=k; const P=loopStart(k,z); E.play=P; E.st='loop'; say(`Count-in: section ${SEC(k).name}…`,pendTxt());
+  if(o.rec) at(z-0.01,()=>{ if(G0!==E.gen||E.play!==P) return; layerStart(o.rec,z); }); else at(z,()=>{ if(G0===E.gen&&E.play===P) say(`Section ${SEC(k).name} is looping.`,pendTxt()); });
+  renderAll(); }
+// the TP-7 back in the performance stance after printing or tape playback
+async function perfReady(){ if(TP.perf&&TP.arm&&TP.arm.v===1) return ''; const e=tpProblem(); if(e) return e+' The app loops anyway, but cannot hear the guitar.'; return await tpPerform(); }
+// stop: the loop and the metronome; a layer being recorded is kept (to keep or drop); the print follows if anything is kept
+async function stopAll(quiet,h){ const now=ctx?ctx.currentTime:0; if(h==null) h=now;
+  if(E.st==='first'&&E.rec){ if(h-E.rec.S0<barS()) firstCancel(); else { const r=E.rec; await firstClose(h,r.type,true); } }
+  E.gen++; countOff(); clearTimeout(E.capT); E.next=null;
+  if(E.rec&&!E.rec.first) await layerStop(h,true);
+  if(E.play){ loopEnd(E.play,now); E.play=null; } clkStop(); preview(false);
+  if(['loop','first','ready','stopped'].includes(E.st)) E.st=S.ses&&S.ses.secs.length?'stopped':(S.ses?'ready':'idle');
+  if(E.st==='ready') clkStart(clkFirst());
+  if(!quiet){ say(E.cancelled?'Cancelled: nothing kept.':'Stopped.',pendTxt()); if(S.printOnStop&&toPrint().length) printSoon(); } E.cancelled=false; renderAll(); }
+
+// ================================================================== the TP-7 as the tape
+// Printing: one straight pass per section and track, with the sum of that track's kept layers. No TP-7 loop points are ever set
+// while armed (every freeze so far came from those, 25 to 31 Oct). The pass is timed by the TP-7's own position reports (every
+// ~200 ms while the tape moves), so the start lag (30 to 65 ms, different each session) does not matter. Silence around the section
+// is printed too, which changes nothing in overdub, so the arm and disarm times are not critical.
+// Cues: note k marks section k's start (0.4 s early, so its messages are done before the arm), note 64 + k a lead-in 1.5 s before it; set during playback only (CC 16 + note,
+// 79 ms late), whenever a pass plays unarmed past where one is missing.
+const CUE_PRE=0.4, LEAD=1.5;
+let printT=null;
+function printSoon(){ clearTimeout(printT); E.printAt=performance.now()+2500; say('Stopped. Printing the kept layers to the TP-7 in 2 s…','Switch 2 plays on instead; Sections has Print now.');
+  printT=setTimeout(()=>{ E.printAt=null; if(E.st==='stopped') printAll(); },2500); }
+function printCancelSoon(){ if(printT){ clearTimeout(printT); printT=null; E.printAt=null; } }
+const posFit=(P0,q)=>{ const p=TP.posLog.filter(x=>x[0]>=P0&&x[1]>=q*1000+350&&x[1]<1e7); if(!p.length) return {n:0}; const d=p.map(x=>x[0]-x[1]);
+  return {n:p.length,c:medOf(d),spread:Math.max(...d)-Math.min(...d)}; };
+const posFitQ=(P0,q)=>{ const p=TP.posLog.filter(x=>x[0]>=P0&&x[1]>=q*1000+150&&x[1]<1e7); if(!p.length) return {n:0}; const d=p.map(x=>x[0]-x[1]); return {n:p.length,c:medOf(d),spread:Math.max(...d)-Math.min(...d)}; };
+function cueBefore(t){ let best=null; const C=S.ses.cues||{}; for(const n in C){ const pos=C[n]; if(pos<=t&&(!best||pos>best.pos)) best={n:+n,pos}; } return best; }
+// cues missing between tape times a and b (exclusive of armed spans), scheduled from the pass's fit
+function cuesOnTheWay(a,b,tP,tag){ const ses=S.ses, md=S.tp.mDelay, set=[];
+  ses.secs.forEach((sec,k)=>{ if(k>63) return; for(const [n,pos] of [[k,sec.s-CUE_PRE],[64+k,sec.s-LEAD]]){ if(pos<0.3||ses.cues[n]!=null||pos<a||pos>b) continue;
+      const T=tP(pos)+md; midiSendPerf([0xB0,16,127],T-40,tag); midiSendPerf([0x90,n,100],T,tag); midiSendPerf([0xB0,16,0],T+120,tag); set.push([n,pos]); } });
+  return set; }
+function trackMix(job){ const sec=SEC(job.k), sr=ctx.sampleRate, N=Math.round(sec.L*sr), mix=ctx.createBuffer(1,N,sr), md=mix.getChannelData(0); let any=false;
+  for(const l of job.layers){ const b=E.bufs.get(l.id); if(!b) continue; const d=b.getChannelData(0), g=gainOf(l), M=d.length; any=true;
+    if(M===N) for(let i=0;i<N;i++) md[i]+=d[i]*g; else for(let i=0;i<N;i++){ const x=i*M/N, j=Math.floor(x), f=x-j; md[i]+=(d[j%M]*(1-f)+d[(j+1)%M]*f)*g; } }
+  return any?mix:null; }
+async function printAll(){ const e=tpProblem(); if(e){ say(e); return; } if(!['stopped','ready'].includes(E.st)) return; printCancelSoon();
+  const by={}; toPrint().forEach(({l,k})=>{ const key=k+':'+TRACK[l.type]; (by[key]=by[key]||{k,track:TRACK[l.type],layers:[]}).layers.push(l); });
+  const jobs=Object.values(by).sort((a,b)=>a.k-b.k||a.track-b.track); if(!jobs.length){ say('Nothing kept to print.'); return; }
+  const f=await tpFileNow(), mine=S.ses.file; if(f&&mine&&f.path!==mine.path){ say(`The TP-7 has another recording loaded (${f.path.split('/').pop()}): load ${mine.path.split('/').pop()} on the TP-7 to print this session.`); return; }
+  E.st='printing'; E.printStop=false; const G0=++E.gen; A.mon.gain.setTargetAtTime(0,ctx.currentTime,0.01); renderAll(); let err='', done=0;
+  for(const [i,job] of jobs.entries()){ if(E.printStop||G0!==E.gen) break; const sec=SEC(job.k);
+    say(`Printing ${i+1} of ${jobs.length}: section ${sec.name}, ${['guitar','synth','drums'][job.track]} on track ${job.track+1}…`,'Switch 2: stop after this pass.');
+    err=await printPass(job); if(err){ log('err','print: '+err); break; } done++; }
+  A.mon.gain.setTargetAtTime(1,ctx.currentTime,0.02); const back=await tpPerform(); E.st='stopped';
+  const left=toPrint().length; say(err?`Print stopped: ${err}`:left?`Printed ${done} pass${done===1?'':'es'}; ${left} layer${left>1?'s':''} still to print.`:`Printed: everything kept is on the TP-7.`,back?back:pendTxt());
+  renderAll(); const a=E.after; E.after=null; if(a&&a.play) playFrom(S.ses.cur||0,{rec:a.rec}); }
+async function printPass(job){ const ses=S.ses, sec=SEC(job.k); await ensureBufs(job.k); const mix=trackMix(job); if(!mix) return 'The layers have no audio.';
+  await tpUnperform(); mNow([0xB0,17,0]); mNow(sxMsg(SXOP.stop)); await sleep(150);
+  const r=await tpEditTo(job.track,TPIN.usb1); if(r) return r;
+  // start from the latest cue at least 1.3 s before the section (the report fit needs about a second), else from the start
+  const cue=cueBefore(sec.s-1.3); if(cue) await tpCue(cue.n); else if(!(await tpToStart())) return 'The tape did not go back to the start.';
+  const q=(await tpPosNow())/1000, end=ses.fileEnd||0;
+  if(q>sec.s-0.9){ log('err',`print: the tape stood at ${q.toFixed(2)} s, ${(sec.s-q).toFixed(2)} s before section ${sec.name}; from the start instead`); if(!(await tpToStart())) return 'The tape did not go back to the start.'; }
+  const q2=q>sec.s-0.9?0:q;
+  // playback stops at the end of the recording, so a section beyond it is armed before the end is reached
+  const armP=Math.min(sec.s-0.15,end-0.3), early=armP<q2+0.45; if(early&&!(await tpArm(true))) return 'The TP-7 did not arm.';
+  const P0=performance.now(); mNow(sxMsg(SXOP.play)); const tag='print';
+  if(!(await waitFor(()=>posFit(P0,q2).n>=3,4000,10))){ mNow([0xB0,14,0]); mNow(sxMsg(SXOP.stop)); return 'The TP-7 sent no position reports while playing.'; }
+  const fit=posFit(P0,q2), tP=p=>fit.c+p*1000, g0=p2h(tP(sec.s)+(S.tp.printFix||0));
+  if(g0<ctx.currentTime+0.04){ mNow([0xB0,14,0]); mNow(sxMsg(SXOP.stop)); return `Too little lead-in before section ${sec.name}.`; }
+  const src=ctx.createBufferSource(); src.buffer=mix; src.connect(A.print); src.start(g0);
+  if(!early) midiSendPerf([0xB0,14,127],tP(armP),tag);
+  const cues=cuesOnTheWay(q2+0.5,(early?q2:armP)-0.2,tP,tag);
+  const offP=sec.s+sec.L+0.25; // a quarter second past the section, so a TP-7 loop of the last section ends inside the recording midiSendPerf([0xB0,14,0],tP(offP),tag); midiSendPerf(sxMsg(SXOP.stop),tP(offP+0.3),tag);
+  E.lastFit={n:fit.n,spread:fit.spread,lag:null}; log('st',`print ${sec.name} track ${job.track+1}: from ${q2.toFixed(2)} s, ${fit.n} reports (spread ${fit.spread.toFixed(1)} ms)${early?', armed from the start of the pass':''}`);
+  await sleep(Math.max(0,tP(offP+0.6)-performance.now()));
+  const okOff=await waitFor(()=>TP.arm&&TP.arm.v===0,800,10); if(!okOff){ mNow([0xB0,14,0]); await sleep(200); }
+  cues.forEach(([n,pos])=>{ ses.cues[n]=pos; }); ses.fileEnd=Math.max(end,offP); job.layers.forEach(l=>{ l.printed=true; }); save(); return ''; }
+
+// ------------------------------------------------------------------ TP-7 playback from a section (Sections view)
+async function tapePlay(k,loop){ const e=tpProblem(); if(e){ say(e); return; } printCancelSoon(); if(E.st==='printing'){ toast('Printing: wait for it to finish.'); return; }
+  await stopAll(true); const sec=SEC(k); if(!sec) return; const G0=++E.gen; E.st='tape'; E.tape={k,loop}; say(`TP-7: going to section ${sec.name}…`,''); renderAll();
+  await tpUnperform(); mNow([0xB0,17,0]); mNow(sxMsg(SXOP.stop)); await sleep(150); if(G0!==E.gen) return;
+  // a loop needs the tape's timing before the section starts: from the lead-in cue (1.5 s ahead) when there is one
+  const own=S.ses.cues[k], lead=S.ses.cues[64+k]; let c=loop&&lead!=null?{n:64+k,pos:lead}:own!=null?{n:k,pos:own}:cueBefore(sec.s-(loop?1.2:0.3));
+  if(c) await tpCue(c.n); else await tpToStart(); if(G0!==E.gen) return; const q=(await tpPosNow())/1000;
+  const P0=performance.now(); mNow(sxMsg(SXOP.play)); E.tape={k,loop,P0,q};
+  say(`TP-7: playing section ${sec.name}${loop?' on a loop':''}.`,c&&(c.n===k||c.n===64+k)?'':c?`No cue for ${sec.name} yet: playing from the cue before it, setting its cue on the way.`:'Playing from the start of the recording.'); renderAll();
+  // the first report after 150 ms of motion is enough here (the loop's length does not depend on it)
+  await waitFor(()=>G0!==E.gen||posFitQ(P0,q).n>=1,3000,10); if(G0!==E.gen) return; let fit=posFitQ(P0,q); if(!fit.n){ say('The TP-7 is not playing (no position reports).'); return; }
+  // a loop: more reports while there is time (three give the timing to a few ms), the loop-in message 150 ms ahead at the latest
+  if(loop) await waitFor(()=>G0!==E.gen||posFit(P0,q).n>=3||fit.c+sec.s*1000+S.tp.mDelay-performance.now()<150,3000,10); if(G0!==E.gen) return; if(loop&&posFit(P0,q).n>=1) fit=posFit(P0,q);
+  const tP=p=>fit.c+p*1000; const cues=cuesOnTheWay(q+0.4,(S.ses.fileEnd||1e9)-0.2,tP,'tape'); cues.forEach(([n,pos])=>{ S.ses.cues[n]=pos; }); save();
+  if(loop){ const md=S.tp.mDelay, adj=S.tp.loopAdj, tin=tP(sec.s)+md;
+    if(tin<performance.now()+20){ log('err',`tape loop: section ${sec.name} began before the loop could be set; it plays on`); say(`TP-7: playing section ${sec.name}; the loop could not be set in time.`); }
+    else { midiSendPerf([0xB0,17,1],tin,'tape'); midiSendPerf([0xB0,17,2],tP(sec.s+sec.L)+md+adj,'tape'); } }
+  E.tape.fit=fit; renderAll(); }
+async function tapeStop(){ E.gen++; midiPurge('tape'); mNow([0xB0,17,0]); mNow(sxMsg(SXOP.stop)); E.tape=null; E.st=S.ses&&S.ses.secs.length?'stopped':'idle'; say('TP-7 stopped.',''); renderAll(); }
+// which section the tape is in now (from its last position report)
+function tapeSecAt(pos){ const ses=S.ses; if(!ses) return -1; const t=pos/1000; for(let k=ses.secs.length-1;k>=0;k--) if(t>=ses.secs[k].s-0.05) return k; return -1; }
+
+// ================================================================== actions: the footswitch and the on-screen switches share these
+// Your layout (6 Nov): 1 guitar layer, 2 play/stop, 3 previous section, 4 next section (from the last one: a new section),
+// 5 synth layer, 6 keep the newest layer (tap) or drop it (double tap); with nothing to keep, four taps of 6 start a new session.
+const SW_ACT=['gtr','play','prev','next','syn','six'];
+const SW_LABEL=[['Guitar','layer · close'],['Play / stop',''],['Previous','section'],['Next','section · new'],['Synth','layer · close'],['Keep','double tap: drop']];
+async function act(a,ev,hh){ initAudio(); if(!ctx) return; if(ctx.state!=='running') try{ await ctx.resume(); }catch(e){}
+  const h=hh!=null?hh:p2h(evT(ev)); log('do',`${a} (${E.st}${E.rec?', recording '+E.rec.type:''})`); requestWake();
+  try{ await act2(a,h); }catch(err){ log('err',`${a}: ${err&&err.stack||err}`); say('Error: '+(err&&err.message||err)); } renderAll(); }
+async function act2(a,h){ const st=E.st, ses=S.ses;
+  if(a==='gtr'||a==='syn'){
+    if(st==='prep'){ say('Getting the TP-7 ready: press once the metronome runs.'); return; }
+    if(st==='printing'){ E.printStop=true; E.after={play:true,rec:a}; say('Recording after this print pass…'); return; }
+    if(st==='tape'){ await tapeStop(); return playFrom(ses.cur||0,{rec:a}); }
+    if(st==='idle') return prepSession(ses?ses.bpm:(TAP.bpm||100));
+    if(st==='ready'){ printCancelSoon(); await openInput(); if(!CLK.on) clkStart(clkFirst()); return firstStart(a,clkNear(h)); }
+    if(st==='first'){ if(E.rec) return firstClose(h,a); return; }
+    if(st==='loop'){ if(E.next){ say('Changing section: record once it starts.'); return; } if(E.rec){ const t=E.rec.type; await layerStop(h); if(t===a) return; } return layerStart(a,h); }
+    if(st==='stopped'){ printCancelSoon(); return playFrom(ses.cur||0,{rec:a}); }
+    return; }
+  if(a==='drm'){ if(st==='loop'&&!E.next){ if(E.rec&&E.rec.type==='drm') return layerStop(h); if(E.rec) await layerStop(h); return layerStart('drm',h); }
+    toast(st==='ready'||st==='stopped'?'Drums record into a looping section: record a guitar loop first.':'Drums record while a section loops.'); return; }
+  if(a==='play'){
+    if(st==='ready'){ S.metroOn=!S.metroOn; save(); if(S.metroOn&&!CLK.on) clkStart(clkFirst()); say(`Metronome ${S.metroOn?'on':'off'}.`); return; }
+    if(st==='first'||st==='loop') return stopAll(false,h);
+    if(st==='stopped'){ printCancelSoon(); return playFrom(ses.cur||0); }
+    if(st==='printing'){ E.printStop=true; E.after={play:true}; say('Playing after this print pass…'); return; }
+    if(st==='tape') return tapeStop();
+    return; }
+  if(a==='next'||a==='prev'){ if(!ses||!ses.secs.length) return; const n=ses.secs.length, cur=ses.cur||0;
+    if(st==='loop'){ if(E.next) return; if(a==='next') return cur>=n-1?goSection(null,true):goSection(cur+1); return cur>0?goSection(cur-1):undefined; }
+    if(st==='stopped'){ printCancelSoon(); if(a==='next') return cur>=n-1?playFrom(cur,{newSec:true}):playFrom(cur+1); return playFrom(Math.max(0,cur-1)); }
+    if(st==='tape'){ const k=clamp(cur+(a==='next'?1:-1),0,n-1); ses.cur=k; return tapePlay(k,E.tape&&E.tape.loop); }
+    return; }
+  if(a==='keep') return accept(newestPending());
+  if(a==='drop') return dismiss(newestPending()); }
+// switch 6: with a layer to keep or drop, a tap keeps it and a double tap (within 0.35 s) drops it; otherwise tap tempo
+const SIX={n:0,t:null};
+function six(ev){ if(newestPending()){ SIX.n++; clearTimeout(SIX.t); if(SIX.n>=2){ SIX.n=0; act('drop',ev); return; } SIX.t=setTimeout(()=>{ SIX.n=0; act('keep'); },350); return; }
+  if(SIX.n){ SIX.n=0; clearTimeout(SIX.t); } tapTempo(evT(ev)); }
+const TAP={taps:[],bpm:null};
+function tapTempo(ts){ initAudio(); const st=E.st; if(!['idle','stopped','ready'].includes(st)){ if(st==='loop') say('Nothing to keep or drop.'); return; }
+  const T=TAP.taps; if(T.length&&ts-T[T.length-1]>2000) T.length=0; T.push(ts); log('in',`tap ${T.length}`);
+  if(T.length<4){ say(`Tap ${4-T.length} more for a new session…`); return; }
+  const iv=T.slice(1).map((t,i)=>t-T[i]), last=T[3]; T.length=0; const mx=Math.max(...iv), mn=Math.min(...iv);
+  if(mx>1.25*mn){ log('st',`uneven taps: ${iv.map(Math.round).join(', ')} ms`); say('Uneven taps: tap 4 steady beats again.'); return; }
+  const med=iv.slice().sort((a,b)=>a-b)[1], bpm=60000/med; if(bpm<50||bpm>200){ say(`${Math.round(bpm)} bpm is outside 50 to 200: tap again.`); return; }
+  TAP.bpm=bpm; const z=p2h(last)+med/1000; // the beat after your fourth tap is bar 1
+  if(st==='ready'&&S.ses&&!S.ses.secs.length){ S.ses.bpm=Math.round(bpm*10)/10; save(); clkStart(alignBar(z)); say(`Tempo ${S.ses.bpm} bpm.`); renderAll(); return; }
+  prepSession(bpm,z); }
+function alignBar(z){ const bar=barS(); return z<ctx.currentTime+0.05?z+Math.ceil((ctx.currentTime+0.05-z)/bar)*bar:z; }
+
+// ------------------------------------------------------------------ the footswitch: AirTurn BT500S-6 in keyboard mode (mode 2)
+// Switches 1 to 6 send Up, Down, Left, Right, Return, Space; every press arrives as a short tap (no holds in this mode, 29 Oct).
+const PED_KEYS=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' '];
+const PED={down:[0,0,0,0,0,0],up:[-1e9,-1e9,-1e9,-1e9,-1e9,-1e9],kd:[0,0,0,0,0,0],gate:null,midi:null};
+const keyOf=e=>e.key==='Spacebar'?' ':e.key||({38:'ArrowUp',40:'ArrowDown',37:'ArrowLeft',39:'ArrowRight',13:'Enter',32:' '}[e.keyCode]||'');
+const typing=t=>!!(t&&t.matches&&(t.matches('textarea,[contenteditable="true"]')||(t.matches('input')&&!/^(range|checkbox|radio|button)$/i.test(t.type||'text'))));
+['keydown','keyup'].forEach(type=>window.addEventListener(type,e=>{ const i=PED_KEYS.indexOf(keyOf(e)); if(i<0||typing(e.target)) return;
+  e.preventDefault(); e.stopImmediatePropagation(); const ae=document.activeElement; if(ae&&ae!==document.body&&ae.blur) ae.blur(); const now=performance.now();
+  if(type==='keyup'){ PED.down[i]=0; PED.up[i]=now; swFlash(i,false); return; }
+  if(e.repeat||(PED.down[i]&&now-PED.kd[i]<250)){ PED.kd[i]=now; return; }
+  if(now-PED.up[i]<45){ log('in',`switch ${i+1}: bounce ignored`); return; }
+  PED.down[i]=1; PED.kd[i]=now; setTimeout(()=>{ if(PED.down[i]&&performance.now()-PED.kd[i]>=120){ PED.down[i]=0; } },140);
+  sw(i,e,'key'); },true));
+function sw(i,ev,src){ log('in',`switch ${i+1}${src==='key'?'':' (screen)'}`); swFlash(i,true); setTimeout(()=>swFlash(i,false),160);
+  if(PED.gate&&!PED.gate(i,ev)) return; if(i===5) return six(ev); act(SW_ACT[i],ev); }
+function swFlash(i,on){ const b=document.querySelector(`[data-sw="${i}"]`); if(b) b.classList.toggle('flash',!!on); }
+async function requestWake(){ try{ if('wakeLock' in navigator&&!E.wake) E.wake=await navigator.wakeLock.request('screen'); }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ E.wake=null; if(S.ses) requestWake(); if(ctx&&ctx.state!=='running') ctx.resume().catch(()=>{}); } });
+
+// ================================================================== screens
+function showTab(t){ ['Loop','Pads','Secs','Set'].forEach(x=>{ $('#p'+x).hidden=x!==t; }); $$('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t))); E.tab=t; renderAll(); }
+function renderAll(){ renderScreen(); const t=E.tab||'Loop'; if(t==='Loop') renderLoop(); else if(t==='Pads') renderPads(); else if(t==='Secs') renderSecs(); else renderSet(); }
+const curK=()=>{ if(E.play) return E.play.k; if(E.next&&E.next.k!=null) return E.next.k; return S.ses?S.ses.cur||0:0; };
+function posTxt(){ if(!ctx) return '–'; const now=ctx.currentTime, b=beatS();
+  if(E.ci&&now>=E.ci.a-0.01&&now<E.ci.b) return `in ${Math.min(4,Math.floor((now-E.ci.a)/b+0.02)+1)}`;
+  if(E.st==='first'&&E.rec){ const t=now-E.rec.S0; if(t<0) return '–'; const n=Math.floor(t/b); return `${Math.floor(n/4)+1}·${n%4+1}`; }
+  if(E.play){ const t=now-E.play.z; if(t<0) return '–'; const n=Math.floor(t/b), per=Math.round(E.play.L/b), m=n%per; return `${Math.floor(m/4)+1}·${m%4+1}`; }
+  if(E.st==='tape'&&TP.pos!=null){ const s=TP.pos/1000; return `${Math.floor(s/60)}:${(s%60).toFixed(1).padStart(4,'0')}`; }
+  if(CLK.on&&E.st==='ready'){ const n=Math.floor((now-CLK.z0)/b); return n>=0?`·${(n%4+4)%4+1}`:'–'; }
+  return '–'; }
+function renderScreen(){ const st=$('#scState'), sm=$('#scSmall'); if(!st) return; st.textContent=E.msg||'Tinebox Loop'; sm.textContent=E.small||'';
+  const ch=[]; const tp=midiReady()?(TP.info?'TP-7':'TP-7 (no reply yet)'):'no TP-7';
+  ch.push(`<span class="chip ${midiReady()?'on':'bad'}">${esc(tp)}</span>`);
+  if(midiReady()) ch.push(`<span class="chip ${TP.arm&&TP.arm.v?'on':''}">${TP.arm&&TP.arm.v?'armed':'not armed'}</span>`);
+  if(S.ses) ch.push(`<span class="chip on">${S.ses.bpm} bpm</span>`);
+  if(S.ses&&S.ses.rt!=null) ch.push(`<span class="chip">round trip ${Math.round(S.ses.rt*1000)} ms</span>`);
+  const p=pending().length; if(p) ch.push(`<span class="chip bad">${p} to keep or drop</span>`);
+  const q=toPrint().length; if(q) ch.push(`<span class="chip">${q} to print</span>`);
+  if(IN.stream) ch.push(`<span class="chip ${IN.pk>0.003?'on':''}">in ${IN.pk>3e-5?Math.round(20*Math.log10(IN.pk))+' dB':'silent'}</span>`);
+  const h=ch.join(''); if(h!==E.chipsH){ $('#scChips').innerHTML=h; E.chipsH=h; } }
+setInterval(()=>{ const p=$('#scPos'); if(!p) return; const t=posTxt(); if(p.textContent!==t) p.textContent=t; p.classList.toggle('rec',!!(E.rec||E.st==='first'));
+  const r=$('#scRing'); if(r&&ctx){ let f=0; if(E.play){ f=phase(ctx.currentTime,E.play.z,E.play.L)/E.play.L; if(ctx.currentTime<E.play.z) f=0; } else if(E.st==='first'&&E.rec){ f=((ctx.currentTime-E.rec.S0)/barS())%1; } r.style.width=(Math.max(0,f)*100).toFixed(1)+'%'; r.style.background=E.rec||E.st==='first'?'#ff6a5e':''; }
+  ciShow(E.ci&&ctx&&ctx.currentTime>=E.ci.a-0.01&&ctx.currentTime<E.ci.b?String(Math.min(4,Math.floor((ctx.currentTime-E.ci.a)/E.ci.beat+0.02)+1)):'');
+  if(E.tab==='Loop'||!E.tab){ const rs=E.rec?E.rec.type:''; if(rs!==E.recShown){ E.recShown=rs; renderLoop(); } }
+  renderScreen(); },60);
+function ciShow(n){ let el=$('#countBig'); if(!el){ if(!n) return; el=document.createElement('div'); el.id='countBig'; el.className='count-big'; el.setAttribute('aria-hidden','true'); document.body.appendChild(el); } if(el.textContent!==n) el.textContent=n; el.hidden=!n; }
+function layerRow(l,k){ const st=l._busy?'processing…':l._rendering?'rendering the synth…':l.printed?'on the TP-7':l.state==='pending'?'keep or drop?':'kept · prints when you stop';
+  const cls=l.state==='pending'?'pend':l.printed?'tape':'';
+  const opts=l.type==='syn'&&!l.printed?`<div class="lopt"><select data-lset="preset" data-id="${l.id}" data-k="${k}" aria-label="Synth sound">${Object.entries(G.PRESETS).map(([v,p])=>`<option value="${v}"${l.preset===v?' selected':''}>${p.name}</option>`).join('')}</select>
+    <select data-lset="oct" data-id="${l.id}" data-k="${k}" aria-label="Octave">${[-2,-1,0,1,2].map(o=>`<option value="${o}"${(l.oct||0)===o?' selected':''}>${o>0?'+':''}${o} oct</option>`).join('')}</select>
+    <button type="button" class="btn sm" data-lset="snap" data-id="${l.id}" data-k="${k}" aria-pressed="${!!l.snap}">Snap to key</button>${l.notes!=null?`<span class="note">${l.notes} notes</span>`:''}</div>`:'';
+  return `<div class="layer"><span class="ltag ${l.type}">${TNAME[l.type]}</span><span class="lst ${cls}">${st}</span>
+    <span class="lact">${l.state==='pending'?`<button type="button" class="btn sm pri" data-lact="keep" data-id="${l.id}" data-k="${k}">Keep</button><button type="button" class="btn sm" data-lact="drop" data-id="${l.id}" data-k="${k}">Drop</button>`:!l.printed?`<button type="button" class="btn sm" data-lact="drop" data-id="${l.id}" data-k="${k}">Drop</button>`:''}
+    <button type="button" class="btn sm" data-lact="mute" data-id="${l.id}" data-k="${k}" aria-pressed="${!!l.muted}">${l.muted?'Muted':'Mute'}</button></span>${opts}</div>`; }
+function renderLoop(){ const el=$('#pLoop'); if(!el) return; const ses=S.ses, k=curK(), sec=ses&&SEC(k);
+  const swh=SW_ACT.map((a,i)=>{ const on=(a==='gtr'&&E.rec&&E.rec.type==='gtr')||(a==='syn'&&E.rec&&E.rec.type==='syn')||(a==='play'&&(E.st==='loop'||E.st==='first'||E.st==='tape'));
+    return `<button type="button" data-sw="${i}" class="${on?'on':''}"><span class="n">${i+1}</span><b>${SW_LABEL[i][0]}</b><small>${SW_LABEL[i][1]}</small></button>`; }).join('');
+  let body='';
+  if(!ses) body=`<div class="card"><h3>Start</h3><p class="note">1. Settings: Connect the TP-7 (USB-C) and allow MIDI and the microphone.</p><p class="note">2. On the TP-7: record sources line 1, USB 1 and USB 2; MIDI setting cue; auto start and count-in off.</p><p class="note">3. Tap switch 6 four times at your tempo. The app makes a new TP-7 recording (about 6 s), then the metronome starts. Switch 1 records guitar, switch 5 a synth loop.</p><div class="row"><button type="button" class="btn pri" data-act="newSes">New session at ${Math.round(TAP.bpm||100)} bpm</button></div></div>`;
+  else if(!sec) body=`<div class="card"><h3>Session at ${ses.bpm} bpm</h3><p class="note">${E.st==='ready'?'Switch 1 records a guitar loop from the bar line nearest your press; switch 1 again closes it on the nearest bar line. Switch 5 does the same as a synth loop.':'Tap switch 1 or 5 to get the TP-7 ready again and record.'}</p></div>`;
+  else body=`<div class="card"><h3>Section ${esc(sec.name)} · ${sec.bars} bar${sec.bars>1?'s':''}<span class="note"> · ${k+1} of ${ses.secs.length}</span></h3>${sec.layers.length?sec.layers.map(l=>layerRow(l,k)).join(''):'<p class="note">No layers.</p>'}
+    ${E.st==='loop'?`<div class="row"><button type="button" class="btn sm" data-act="drm" aria-pressed="${!!(E.rec&&E.rec.type==='drm')}">${E.rec&&E.rec.type==='drm'?'Recording drums…':'Record drums'}</button><span class="note">or use the Pads tab</span></div>`:''}</div>`;
+  el.innerHTML=`<div class="sw">${swh}</div>${body}<p class="note">Keep sends a layer to the TP-7 when you stop (one straight pass per section and track: guitar on track 1, synth on 2, drums on 3). Drop removes it for good. Nothing reaches the TP-7 before you keep it.</p>`; }
+function renderPads(){ const el=$('#pPads'); if(!el) return; const rec=!!(E.rec&&E.rec.type==='drm');
+  el.innerHTML=`<div class="row"><button type="button" class="btn ${rec?'rec':''}" data-act="drm">${rec?'● Recording: tap to stop':'Rec'}</button><select data-set="kit" aria-label="Kit">${Object.entries(KITS).map(([k,v])=>`<option value="${k}"${S.kit===k?' selected':''}>${v.name}</option>`).join('')}</select>
+    <select data-set="quant" aria-label="Snap hits"><option value="0"${!S.quant?' selected':''}>As played</option><option value="8"${S.quant===8?' selected':''}>Snap to 8ths</option><option value="16"${S.quant===16?' selected':''}>Snap to 16ths</option></select></div>
+    <div class="pads">${PADS.map((p,i)=>`<button type="button" class="pad" data-pad="${i}">${p}</button>`).join('')}</div>
+    <div class="card"><div class="row"><span class="lbl">Pad timing: ${S.padFix==null?'not set (hits as they arrive)':`hits moved ${S.padFix} ms earlier`}</span><button type="button" class="btn sm" data-act="padCal">${PADCAL.on?`Tap on the clicks (${PADCAL.hits.length} of 8)`:'Set by tapping'}</button></div>
+    <p class="note">Rec records a drum layer into the looping section, from now until you tap Rec again. From the next time round you hear what you played so far. A touch screen reacts a little late; set the pad timing once so the hits land where you played them.</p></div>`; }
+function secSum(sec){ const c={gtr:0,syn:0,drm:0}, pr={gtr:0,syn:0,drm:0}; sec.layers.forEach(l=>{ c[l.type]++; if(l.printed) pr[l.type]++; });
+  const parts=Object.keys(c).filter(t=>c[t]).map(t=>`${c[t]} ${TNAME[t].toLowerCase()}`); const onTape=sec.layers.filter(l=>l.printed).length, kept=sec.layers.filter(l=>l.state==='accepted'&&!l.printed).length, pend=sec.layers.filter(l=>l.state==='pending').length;
+  return `${parts.join(', ')||'empty'} · ${onTape?`${onTape} on the TP-7`:'nothing on the TP-7'}${kept?` · ${kept} to print`:''}${pend?` · ${pend} to keep or drop`:''}`; }
+function renderSecs(){ const el=$('#pSecs'); if(!el) return; const ses=S.ses;
+  if(!ses||!ses.secs.length){ el.innerHTML='<div class="card"><p class="note">No sections yet. Record a loop first; Next (switch 4) on the last section records a new one.</p></div>'; return; }
+  const tk=E.st==='tape'&&TP.pos!=null?tapeSecAt(TP.pos):-1;
+  el.innerHTML=ses.secs.map((s,k)=>`<div class="card sec ${k===curK()?'cur':''}"><span class="let dot">${esc(s.name)}</span><div><b>${s.bars} bar${s.bars>1?'s':''}</b>${tk===k?' · <b style="color:var(--ok)">playing on the TP-7</b>':''}<div class="sum">${secSum(s)}</div></div><span></span>
+    <div class="acts"><button type="button" class="btn sm pri" data-act="loopApp" data-k="${k}">Loop here</button><button type="button" class="btn sm" data-act="tapePlay" data-k="${k}">▶ TP-7 from here</button><button type="button" class="btn sm" data-act="tapeLoop" data-k="${k}">Loop on TP-7</button></div></div>`).join('')+
+    `<div class="row"><button type="button" class="btn" data-act="tapeStop">■ Stop TP-7</button><button type="button" class="btn" data-act="printNow">Print kept layers now${toPrint().length?` (${toPrint().length})`:''}</button></div>
+    <p class="note">Loop here loops the section in the app (as switches 3 and 4 do). The TP-7 buttons play its recording from the section's cue; a section without a cue yet plays from the cue before it and gets its cue on the way.</p>`; }
+function renderSet(){ const el=$('#pSet'); if(!el) return; const s=S.synth, info=TP.info;
+  el.innerHTML=`<div class="card"><h3>TP-7</h3><div class="row"><button type="button" class="btn pri" data-act="connect">Connect</button><span class="note" id="midiNote">${esc(R.note||'Not connected.')}</span></div>
+    ${info?`<p class="note">${esc(info.product||'')} ${esc(info.sw_version||'')}</p>`:''}<p class="note">Audio: ${ctx?`${ctx.sampleRate} Hz, ${ctx.destination.maxChannelCount} output channel${ctx.destination.maxChannelCount>1?'s':''}, input ${IN.kind||'closed'}`:'not started'}. Round trip: ${S.ses&&S.ses.rt!=null?msTxt(S.ses.rt):'measured at each new session'}.</p></div>
+  <div class="card"><h3>Synth layers</h3>
+    <div class="row"><span class="lbl">Sound for new synth layers</span><select data-set="synth.preset">${Object.entries(G.PRESETS).map(([v,p])=>`<option value="${v}"${s.preset===v?' selected':''}>${p.name}</option>`).join('')}</select></div>
+    <div class="row"><span class="lbl">Octave</span><select data-set="synth.oct">${[-2,-1,0,1,2].map(o=>`<option value="${o}"${s.oct===o?' selected':''}>${o>0?'+':''}${o}</option>`).join('')}</select></div>
+    <div class="row"><span class="lbl">Hear the synth while you play</span><button type="button" class="btn sm" data-tog="synth.preview" aria-pressed="${!!s.preview}">${s.preview?'On':'Off'}</button></div>
+    <div class="row"><span class="lbl">Snap new layers to the loop's key</span><button type="button" class="btn sm" data-tog="synth.snap" aria-pressed="${!!s.snap}">${s.snap?'On':'Off'}</button></div>
+    <div class="row"><span class="lbl">Follow bends (glide)</span><button type="button" class="btn sm" data-tog="synth.glide" aria-pressed="${!!s.glide}">${s.glide?'On':'Off'}</button></div>
+    <p class="note">While you play a synth layer you hear your guitar from the TP-7, plus the synth if this is on (late by the round trip and about 20 ms of tracking). Once you close it, the layer is worked out again from the whole take and plays in time from then on.</p></div>
+  <div class="card"><h3>Mix</h3>${[['metro','Metronome'],['loop','Loops'],['pads','Pads'],['prev','Synth while you play']].map(([k,n])=>`<div class="row"><span class="lbl">${n}</span><input type="range" min="0" max="1" step="0.05" value="${S.lv[k]}" data-lv="${k}" aria-label="${n}"></div>`).join('')}
+    <div class="row"><span class="lbl">Metronome</span><button type="button" class="btn sm" data-tog="metroOn" aria-pressed="${!!S.metroOn}">${S.metroOn?'On':'Off'}</button></div></div>
+  <div class="card"><h3>Layers</h3><div class="row"><span class="lbl">Print kept layers when you stop</span><button type="button" class="btn sm" data-tog="printOnStop" aria-pressed="${!!S.printOnStop}">${S.printOnStop?'On':'Off'}</button></div>
+    <div class="row"><span class="lbl">Keep every new layer without asking</span><button type="button" class="btn sm" data-tog="autoAccept" aria-pressed="${!!S.autoAccept}">${S.autoAccept?'On':'Off'}</button></div></div>
+  <div class="card"><h3>Footswitch</h3><p class="note">AirTurn in mode 2 (keyboard): 1 guitar layer (tap on, tap off; closes a first pass), 2 play/stop (in the first bar of a first pass it cancels it), 3 previous section, 4 next section (from the last one it records a new section after a count-in), 5 synth layer, 6 keep the newest layer, double tap 6 to drop it. With nothing to keep, four steady taps of 6 start a new session at that tempo.</p></div>
+  <div class="card"><h3>Tests and log</h3><div class="row"><button type="button" class="btn pri" data-act="diag">Diagnostics</button><button type="button" class="btn" data-act="copyLog">Copy log</button></div>
+    <p class="note">Build ${APP_BUILD}.</p><div class="row"><button type="button" class="btn sm" data-act="endSes">End this session</button></div></div>`; }
+
+// ------------------------------------------------------------------ taps on the screen
+document.addEventListener('pointerdown',e=>{ const b=e.target.closest&&e.target.closest('[data-sw],[data-pad]'); if(!b) return; e.preventDefault();
+  if(b.dataset.sw!=null) sw(+b.dataset.sw,e,'screen'); else { b.classList.add('hit'); setTimeout(()=>b.classList.remove('hit'),90); padHit(+b.dataset.pad,e); } },{passive:false});
+document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.closest('[data-act],[data-lact],[data-tog],[data-tab]'); if(!t) return; initAudio();
+  if(t.dataset.tab) return showTab(t.dataset.tab);
+  if(t.dataset.tog){ const p=t.dataset.tog.split('.'); const o=p.length>1?S[p[0]]:S; o[p[p.length-1]]=!o[p[p.length-1]]; save(); if(t.dataset.tog==='metroOn'&&S.metroOn&&S.ses&&!CLK.on&&E.st==='ready') clkStart(clkFirst()); renderAll(); return; }
+  if(t.dataset.lact){ const k=+t.dataset.k, sec=SEC(k), l=sec&&sec.layers.find(x=>x.id===t.dataset.id); if(!l) return; const x={l,k};
+    if(t.dataset.lact==='keep') accept(x); else if(t.dataset.lact==='drop') dismiss(x); else if(t.dataset.lact==='mute'){ l.muted=!l.muted; layerGain(l); save(); renderAll(); } return; }
+  const a=t.dataset.act, k=t.dataset.k!=null?+t.dataset.k:null;
+  if(a==='connect'){ await midiConnect(); if(midiReady()&&R.sysex){ const m=await sxAlive(); setMidiNote(m?`TP-7 answers (${m} mode).`:'The TP-7 does not answer SysEx. Check the cable and the MIDI setting (cue).'); } await openInput(); renderAll(); return; }
+  if(a==='newSes') return prepSession(TAP.bpm||(S.ses?S.ses.bpm:100));
+  if(a==='drm') return act('drm',e);
+  if(a==='padCal') return padCalStart();
+  if(a==='loopApp'){ if(E.st==='tape') await tapeStop(); if(E.st==='loop'&&E.play&&E.play.k!==k) return goSection(k); if(E.st==='stopped') return playFrom(k); return; }
+  if(a==='tapePlay'||a==='tapeLoop'){ S.ses.cur=k; return tapePlay(k,a==='tapeLoop'); }
+  if(a==='tapeStop') return tapeStop();
+  if(a==='printNow'){ if(E.st==='loop'||E.st==='first') await stopAll(true); return printAll(); }
+  if(a==='diag') return diagOpen();
+  if(a==='copyLog') return copyText(logText(),'Log');
+  if(a==='endSes'){ if(!confirmTap(t,'Tap again to end the session (the TP-7 recording stays).')) return; await stopAll(true); S.ses=null; E.bufs.clear(); E.raws.clear(); E.st='idle'; save(); say('Session ended.','Tap switch 6 four times for a new one.'); renderAll(); return; } });
+document.addEventListener('change',e=>{ const t=e.target;
+  if(t.dataset.set){ const p=t.dataset.set.split('.'), v=/^-?\d+$/.test(t.value)?+t.value:t.value; if(p.length>1) S[p[0]][p[1]]=v; else S[p[0]]=v; save(); renderAll(); return; }
+  if(t.dataset.lset){ const k=+t.dataset.k, sec=SEC(k), l=sec&&sec.layers.find(x=>x.id===t.dataset.id); if(!l) return; l[t.dataset.lset]=t.dataset.lset==='oct'?+t.value:t.value; save(); synthLayer(l,k); renderAll(); } });
+document.addEventListener('click',e=>{ const t=e.target.closest&&e.target.closest('[data-lset="snap"]'); if(!t) return; const k=+t.dataset.k, sec=SEC(k), l=sec&&sec.layers.find(x=>x.id===t.dataset.id); if(!l) return; l.snap=!l.snap; save(); synthLayer(l,k); renderAll(); });
+document.addEventListener('input',e=>{ const t=e.target; if(!t.dataset.lv) return; S.lv[t.dataset.lv]=+t.value; save(); if(ctx){ const n={metro:A.metro,loop:A.loop,pads:A.pads,prev:A.prev}[t.dataset.lv]; if(n) n.gain.setTargetAtTime(+t.value,ctx.currentTime,0.02); } });
+function confirmTap(el,msg){ if(el._armed){ el._armed=false; return true; } el._armed=true; toast(msg); setTimeout(()=>{ el._armed=false; },3000); return false; }
+async function copyText(txt,what){ try{ await navigator.clipboard.writeText(txt); toast(what+' copied. Paste it into our chat.'); }
+  catch(e){ let ta=$('#copyTa'); if(!ta){ ta=document.createElement('textarea'); ta.id='copyTa'; ta.className='copy'; (($('#diag')&&!$('#diag').hidden)?$('#diag .wrap'):$('#pSet')).appendChild(ta); } ta.value=txt; ta.focus(); ta.select(); toast('Select the text below and copy it.'); } }
+
+// ================================================================== diagnostics: what this design rests on, tested on your TP-7
+const DG={run:null,res:{},sx:{}};
+function diagOpen(){ let d=$('#diag'); if(!d){ d=document.createElement('div'); d.id='diag'; d.className='diag'; document.body.appendChild(d); } d.hidden=false; diagRender(); }
+function diagClose(){ const d=$('#diag'); if(d) d.hidden=true; banner(''); }
+const TESTS=[
+  {id:'t1',name:'1. Guitar, clicks and the round trip',time:'about 1 minute, your guitar',desc:'The TP-7 stands armed on line 1 as it will while you play. Checks that your guitar reaches the app and that you hear it, that you hear the app, that the app\'s sound does not come back into the guitar input, the round trip, and how the live synth feels.'},
+  {id:'t2',name:'2. Printing to the TP-7',time:'about 2 minutes, automatic',desc:'Makes a test session at 120 bpm (a new TP-7 recording), prints click layers in three passes onto track 1, then plays the recording back and listens: do the passes line up, where do they land, do the cues jump right, and does the TP-7 loop a section cleanly. Your current session ends.'},
+  {id:'t3',name:'3. Your guitar during a print',time:'about 30 seconds, your guitar',desc:'Decides whether layers can be printed on the very next time round while you play on: the TP-7 records from USB on track 2 with the tape running (silence, so nothing changes) while you strum. Does the app still hear your guitar, and do you?'}];
+function diagRender(){ const d=$('#diag'); if(!d||d.hidden) return;
+  d.innerHTML=`<div class="wrap"><div class="row"><h2 style="flex:1">Diagnostics <small class="note">build ${APP_BUILD}</small></h2><button type="button" class="btn" data-dg="close">Close</button></div>
+  <p class="note">Before you start: TP-7 connected by USB-C, Connect done in Settings, record sources line 1, USB 1 and USB 2, MIDI setting cue. The prompts show at the bottom of the screen; answer with the footswitch or the buttons that appear.</p>
+  ${TESTS.map(t=>`<div class="card"><h3>${t.name}</h3><p class="note">${t.time}. ${t.desc}</p><div class="row"><button type="button" class="btn pri" data-dg="run" data-id="${t.id}" ${DG.run?'disabled':''}>${DG.run===t.id?'Running…':'Run'}</button>${DG.run===t.id?'<button type="button" class="btn" data-dg="stop">Stop</button>':''}</div>${DG.res[t.id]?`<div class="dgres">${esc(DG.res[t.id].join('\n'))}</div>`:''}</div>`).join('')}
+  <div class="card"><div class="row"><button type="button" class="btn pri" data-dg="report">Copy report</button></div><p class="note">The report has every result, the TP-7's messages during each test and the log. Paste it into our chat.</p></div>
+  <div id="dgAns" class="row"></div></div>`; }
+document.addEventListener('click',async e=>{ const b=e.target.closest&&e.target.closest('[data-dg]'); if(!b) return; const a=b.dataset.dg;
+  if(a==='close') return diagClose(); if(a==='report') return copyText(diagReport(),'Report');
+  if(a==='stop'){ DG.stop=true; if(DG.ans) DG.ans(-1); return; }
+  if(a==='ans'){ if(DG.ans) DG.ans(+b.dataset.v); return; }
+  if(a==='run'&&!DG.run) runTest(b.dataset.id); });
+function banner(main,sub,extra){ let el=$('#banner'); if(!main){ if(el) el.hidden=true; return; } if(!el){ el=document.createElement('div'); el.id='banner'; el.className='banner'; el.setAttribute('role','status'); document.body.appendChild(el); }
+  el.hidden=false; el.innerHTML=`<b>${esc(main)}</b>${sub?`<span>${esc(sub)}</span>`:''}${extra?`<div class="bt">${esc(extra)}</div>`:''}`; }
+// a question: answered by footswitch (switch n = option n) or by the buttons under the tests
+function ask(main,opts){ banner(main,opts.map((o,i)=>`switch ${i+1}: ${o}`).join(' · ')); const box=$('#dgAns');
+  if(box) box.innerHTML=opts.map((o,i)=>`<button type="button" class="btn" data-dg="ans" data-v="${i}">${i+1}. ${esc(o)}</button>`).join('');
+  return new Promise(res=>{ DG.ans=v=>{ DG.ans=null; PED.gate=null; if(box) box.innerHTML=''; banner(''); res(v); }; PED.gate=(i)=>{ if(i<opts.length&&DG.ans) DG.ans(i); return false; }; }); }
+const dgLine=(id,s)=>{ (DG.res[id]=DG.res[id]||[]).push(s); log('test',s); diagRender(); };
+async function countdown(main,sub,sec){ for(let i=sec;i>0;i--){ if(DG.stop) return false; banner(main,sub,`${i}`); await sleep(1000); } banner(''); return !DG.stop; }
+async function runTest(id){ DG.run=id; DG.stop=false; DG.res[id]=[]; DG.sx[id]=TP.sxlog=[]; diagRender(); log('app',`test ${id} started, build ${APP_BUILD}`);
+  try{ await ({t1,t2,t3})[id](); }catch(err){ dgLine(id,'✗ error: '+(err&&err.stack||err)); }
+  TP.sxlog=null; DG.run=null; banner(''); PED.gate=null; DG.ans=null; diagRender(); }
+async function dgBasics(id){ initAudio(); const e=tpProblem(); if(e){ dgLine(id,'✗ '+e); return false; }
+  const m=await sxAlive(); if(!m){ dgLine(id,'✗ The TP-7 does not answer over SysEx.'); return false; }
+  dgLine(id,`· TP-7 ${TP.info?TP.info.sw_version:'?'} (${m} mode); audio ${ctx.sampleRate} Hz, ${ctx.destination.maxChannelCount} output channels, base latency ${msTxt(ctx.baseLatency)}, output latency ${msTxt(ctx.outputLatency)}`);
+  if(!(await openInput())){ dgLine(id,'✗ no audio input'); return false; } dgLine(id,`· audio input: ${IN.kind} (${IN.nch} channels)`); return true; }
+// the input's peak over the next `sec` seconds
+async function peakOver(sec){ let pk=0; const f=(t,x)=>{ for(let i=0;i<x.length;i++){ const a=Math.abs(x[i]); if(a>pk) pk=a; } }; IN.taps.add(f); await sleep(sec*1000); IN.taps.delete(f); return pk; }
+const dB=v=>v>0?(20*Math.log10(v)).toFixed(1)+' dBFS':'silence';
+
+// ------------------------------------------------------------------ test 1
+async function t1(){ const id='t1'; if(!(await dgBasics(id))) return; await stopAll(true);
+  // the round trip, three times (track 1 from USB 1, armed while standing)
+  let r=await tpEditTo(0,TPIN.usb1); if(r){ dgLine(id,'✗ '+r); return; } await tpToStart(); await tpArm(true); const rts=[];
+  for(let i=0;i<3&&!DG.stop;i++){ const m=await measureRT(); rts.push(m); } await tpArm(false);
+  rts.forEach((m,i)=>dgLine(id,m.rt!=null?`✓ round trip ${i+1}: ${msTxt(m.rt)} (clicks ${m.res.map(v=>(v*1000).toFixed(1)).join(', ')} ms)`:`✗ round trip ${i+1}: ${m.why}`));
+  const good=rts.filter(m=>m.rt!=null).map(m=>m.rt); if(good.length){ S.tp.rt[setupKey()]=medOf(good); if(S.ses) S.ses.rt=medOf(good); save(); }
+  if(DG.stop) return;
+  // the performance stance
+  r=await tpPerform(); dgLine(id,r?'✗ performance stance: '+r:'✓ edit mode, track 1, line 1, armed, standing'); if(r) return;
+  const quiet=await peakOver(1.5); let lv=0; const f=(t,x)=>{ for(let i=0;i<x.length;i++){ const v=Math.abs(x[i]); if(v>lv) lv=v; } }; IN.taps.add(f);
+  const okc=await countdown('Strum your guitar now','Big open chords, a few times.',6); IN.taps.delete(f); if(!okc) return;
+  dgLine(id,`${lv>0.01?'✓':'✗'} the app hears your guitar: peak ${dB(lv)} (before you played: ${dB(quiet)})`);
+  const a1=await ask('Did you hear your guitar from the TP-7?',['yes','no']); dgLine(id,`${a1===0?'✓':'✗'} you hear your guitar while the TP-7 stands armed: ${a1===0?'yes':'no'}`); if(a1<0) return;
+  // the app's sound while armed on line 1: heard by you, and not coming back into the guitar input
+  const base=ctx.currentTime+0.3, ts=[]; for(let i=0;i<8;i++){ const t=base+i*0.5; knock(t,i%4===0,A.test); ts.push(t); }
+  banner('Listen, and do not play','Eight clicks from the app.'); await sleepTo(base+4.2+RT()); banner('');
+  let leak=0; for(const t of ts){ const x=inSlice(t+RT()-0.01,t+RT()+0.05); if(x) for(const v of x) leak=Math.max(leak,Math.abs(v)); }
+  const qn=await peakOver(0.8); dgLine(id,`${leak<Math.max(0.01,qn*3)?'✓':'✗'} the app's clicks in the guitar input: ${dB(leak)} where they would arrive (quiet ${dB(qn)})`);
+  const a2=await ask('Did you hear eight clicks?',['yes','no']); dgLine(id,`${a2===0?'✓':'✗'} you hear the app while the TP-7 stands armed: ${a2===0?'yes':'no'}`); if(a2<0) return;
+  // the live synth
+  const was=S.synth.preview; S.synth.preview=true; preview(true); dgLine(id,`· live synth (${S.synth.preset}): expected delay ${msTxt(RT()+0.02)} (round trip + about 20 ms of tracking)`);
+  await countdown('Play some single notes and chords','The synth follows your guitar.',12); preview(false); S.synth.preview=was;
+  const a3=await ask('How did the synth feel?',['playable','a bit late','too late','did not hear it']); dgLine(id,`· live synth: ${['playable','a bit late','too late','not heard'][a3]||'no answer'}`);
+  const a4=await ask('Did the synth follow the right notes?',['mostly','some wrong notes','mostly wrong']); dgLine(id,`· live synth notes: ${['mostly right','some wrong','mostly wrong'][a4]||'no answer'}`);
+  dgLine(id,'Done.'); }
+
+// ------------------------------------------------------------------ test 2
+function clickLayer(beats,f,L){ const sr=ctx.sampleRate, N=Math.round(L*sr), y=new Float32Array(N), b=beatS(), n=Math.round(0.004*sr);
+  for(const k of beats){ const i0=Math.round(k*b*sr); for(let j=0;j<n&&i0+j<N;j++) y[i0+j]+=0.5*Math.sin(2*Math.PI*f*j/sr)*(j<n-24?1:(n-j)/24); } return y; }
+// a click's pitch (1, 1.5 or 2 kHz in test 2): the strongest of the three by Goertzel over its 4 ms
+function clickHz(t){ const x=inSlice(t-0.0005,t+0.0045); if(!x) return 0; let best=0, bf=0;
+  for(const f of [1000,1500,2000]){ const w=2*Math.PI*f/IN.sr, c=2*Math.cos(w); let s1=0,s2=0; for(let i=0;i<x.length;i++){ const s0=x[i]+c*s1-s2; s2=s1; s1=s0; } const p=s1*s1+s2*s2-c*s1*s2; if(p>best){ best=p; bf=f; } } return bf; }
+// click arrivals in the input over graph span [a, b)
+function clicksIn(a,b){ const x=inSlice(a,b); if(!x) return []; const sr=IN.sr, out=[]; let fl=0; for(let i=0;i<Math.min(x.length,Math.round(0.05*sr));i++) fl=Math.max(fl,Math.abs(x[i]));
+  const thr=Math.max(0.02,fl*5); for(let i=0;i<x.length;i++){ if(Math.abs(x[i])>thr){ out.push(a+i/sr); i+=Math.round(0.08*sr); } } return out; }
+async function t2(){ const id='t2'; if(!(await dgBasics(id))) return; dgLine(id,'· a test session at 120 bpm (a new TP-7 recording)…');
+  if(E.st==='prep') await waitFor(()=>E.st!=='prep',30000); await prepSession(120,null); if(E.st!=='ready'||!S.ses||S.ses.bpm!==120){ dgLine(id,'✗ session: '+E.msg); return; } dgLine(id,`✓ session ready, round trip ${msTxt(S.ses.rt)}, ${fileTxt(S.ses.file)}`); clkStop();
+  const ses=S.ses, bar=barS(), L=2*bar, sr=ctx.sampleRate, mkSec=(k)=>({id:uid(),name:LETTERS[k],bars:2,L,s:TAPE0+k*L,layers:[]});
+  // B has no click on its first beat, so a loop of A a few ms long does not count as B
+  ses.secs=[mkSec(0),mkSec(1)]; const defs=[[0,[0,2,4,6],1000],[0,[1,3,5,7],1500],[1,[1,2,3,4,5,6,7],2000]], lays=[];
+  for(const [k,beats,f] of defs){ const l=newLayer('gtr'); l.state='accepted'; const y=clickLayer(beats,f,L); E.bufs.set(l.id,mkBuf(y,Math.round(L*sr))); ses.secs[k].layers.push(l); lays.push({l,k,beats,f}); } save();
+  // pass 1: A's first layer alone; then A's second (a second pass on the same track), then B
+  E.st='stopped'; lays[1].l.state='pending'; lays[2].l.state='pending'; await printAll(); const f1=E.lastFit;
+  lays[1].l.state='accepted'; await printAll(); const f2=E.lastFit; lays[2].l.state='accepted'; await printAll(); const f3=E.lastFit;
+  [f1,f2,f3].forEach((f,i)=>dgLine(id,f?`· print pass ${i+1}: ${f.n} position reports, spread ${f.spread.toFixed(1)} ms`:`✗ print pass ${i+1} did not run`));
+  dgLine(id,`· cues set: ${Object.entries(ses.cues).map(([n,p])=>`note ${n} at ${(+p).toFixed(2)} s`).join(', ')||'none'}; recording now ${ses.fileEnd.toFixed(2)} s`);
+  if(DG.stop) return;
+  // play it back from the start and listen (track 1 is not armed, so the USB return carries its playback)
+  await tpUnperform(); await tpEditTo(0,TPIN.line1); await tpToStart(); const P0=performance.now(), g0=ctx.currentTime; mNow(sxMsg(SXOP.play));
+  await sleep((TAPE0+2*L+1)*1000); mNow(sxMsg(SXOP.stop)); const fit=posFit(P0,0); const ts=clicksIn(g0,ctx.currentTime-0.1);
+  if(!fit.n){ dgLine(id,'✗ no position reports during playback'); return; } dgLine(id,`· playback: ${ts.length} clicks heard, ${fit.n} position reports`);
+  const rows=lays.map(({k,beats},i)=>{ const sec=ses.secs[k], offs=[]; for(const b of beats){ const want=sec.s+b*beatS(); const t=ts.find(t=>{ const p=(h2p(t-RT())-fit.c)/1000; return Math.abs(p-want)<0.12; }); if(t!=null) offs.push((h2p(t-RT())-fit.c)/1000-want); } return {i,n:offs.length,of:beats.length,med:offs.length?medOf(offs):null,sp:offs.length?Math.max(...offs)-Math.min(...offs):null}; });
+  rows.forEach(r=>dgLine(id,r.med!=null?`${r.n===r.of?'✓':'✗'} pass ${r.i+1}: ${r.n} of ${r.of} clicks, ${(r.med*1000).toFixed(1)} ms from where the reports place them (spread ${(r.sp*1000).toFixed(1)} ms)`:`✗ pass ${r.i+1}: none of its clicks heard`));
+  if(rows[0].med!=null&&rows[1].med!=null) dgLine(id,`${Math.abs(rows[0].med-rows[1].med)<0.003?'✓':'✗'} two passes on one track line up within ${(Math.abs(rows[0].med-rows[1].med)*1000).toFixed(1)} ms`);
+  const all=rows.filter(r=>r.med!=null).map(r=>r.med); if(all.length){ const m=medOf(all); DG.printOff=m; dgLine(id,`· prints land ${(m*1000).toFixed(1)} ms after the reported position (playback against recording; not applied)`); }
+  // a cue jump
+  const c=ses.cues[1]; if(c!=null){ await tpCue(1); const q=(await tpPosNow())/1000; dgLine(id,`${Math.abs(q-c)<0.08?'✓':'✗'} cue for B: set at ${c.toFixed(3)} s, the tape went to ${q.toFixed(3)} s`); } else dgLine(id,'✗ no cue for B was set');
+  if(DG.stop) return;
+  // loop A on the TP-7 for three times round: the wrap and the loop length, from the clicks
+  const g1=ctx.currentTime; await tapePlay(0,true); await sleep((L*3.4+1.5)*1000); await tapeStop(); const ts2=clicksIn(g1,ctx.currentTime-0.1);
+  const cls=ts2.map(t=>({t,f:clickHz(t)})); DG.dbg={g1,cls,L}; const b2=cls.filter(c=>c.f>1750).length, a1s=cls.filter(c=>c.f>0&&c.f<1250);
+  dgLine(id,`${b2===0&&cls.length>=16?'✓':'✗'} TP-7 loop of A: ${cls.length} clicks heard, ${b2} of section B's (the loop held if none)`);
+  const iv=[]; for(let i=0;i+4<a1s.length;i++){ const d=a1s[i+4].t-a1s[i].t; if(Math.abs(d-L)<0.06) iv.push(d-L); } // A's 1 kHz clicks, four per time round
+  dgLine(id,iv.length?`${Math.abs(medOf(iv))<0.004?'✓':'✗'} TP-7 loop length: ${iv.length} wraps, ${(medOf(iv)*1000).toFixed(1)} ms ${medOf(iv)<0?'short':'long'} (loop out correction ${S.tp.loopAdj} ms)`:'✗ TP-7 loop length: no wrap measured');
+  await perfReady(); dgLine(id,'Done. The test session stays loaded; tap switch 6 four times for a real one.'); }
+
+// ------------------------------------------------------------------ test 3
+async function t3(){ const id='t3'; if(!(await dgBasics(id))) return; await stopAll(true);
+  let r=await tpPerform(); if(r){ dgLine(id,'✗ '+r); return; } if(!(await countdown('Strum, and keep strumming','Until the banner says stop (about 10 s).',3))) return;
+  const ref=await peakOver(1.5); dgLine(id,`· your guitar, TP-7 armed on line 1 and standing: ${dB(ref)}`); banner('Keep strumming','The TP-7 switches to recording from USB…');
+  await tpUnperform(); r=await tpEditTo(1,TPIN.usb1); if(r){ banner(''); dgLine(id,'✗ '+r); return; }
+  // from the start of the recording: track 1 is silent there (wiped at the session start), so what comes back is your guitar or nothing
+  A.mon.gain.value=0; clkStop(); await tpToStart(); await tpArm(true); mNow(sxMsg(SXOP.play)); await sleep(250); banner('Keep strumming','The TP-7 records silence from USB on track 2.');
+  const pk=await peakOver(1.4); mNow([0xB0,14,0]); await sleep(100); mNow(sxMsg(SXOP.stop)); A.mon.gain.value=1; banner('Stop','');
+  dgLine(id,`${pk>Math.max(0.01,ref*0.25)?'✓':'✗'} the app hears your guitar while the TP-7 records USB 1 on track 2: ${dB(pk)}`);
+  const a=await ask('Did you hear your guitar the whole time?',['yes','it went quiet','no']); dgLine(id,`· you hear your guitar while it records USB: ${['yes','it went quiet','no'][a]||'no answer'}`);
+  r=await tpPerform(); dgLine(id,r?'✗ back to the performance stance: '+r:'· back to track 1, line 1, armed'); dgLine(id,'Done.'); }
+
+function diagReport(){ const L=[`Tinebox Loop diagnostics, ${new Date().toLocaleString()}`,`Build ${APP_BUILD}`,`TP-7: ${TP.info?JSON.stringify(TP.info):'no greet reply'}`,
+  ctx?`Audio: ${ctx.sampleRate} Hz, ${ctx.destination.maxChannelCount} output channels, base latency ${msTxt(ctx.baseLatency)}, output latency ${msTxt(ctx.outputLatency)}, input ${IN.kind||'closed'}`:'Audio: not started',
+  `Settings: ${JSON.stringify({tp:S.tp,synth:S.synth,padFix:S.padFix,printOnStop:S.printOnStop})}`,''];
+  TESTS.forEach(t=>{ if(!DG.res[t.id]) return; L.push(`== ${t.name}`,...DG.res[t.id]); const sx=DG.sx[t.id]; if(sx&&sx.length){ const t0=sx[0].t; L.push('-- TP-7 messages',...sx.map(x=>`  ${((x.t-t0)/1000).toFixed(3).padStart(8)} ${x.s}`)); } L.push(''); });
+  L.push('== Log',logText(300)); return L.join('\n'); }
+
+// ================================================================== start
+(function start(){
+  log('app',`page loaded ${new Date().toLocaleString()}, build ${APP_BUILD}`);
+  if(S.ses){ S.ses.secs.forEach(s=>s.layers.forEach(l=>{ delete l._busy; delete l._rendering; })); E.st=S.ses.secs.length?'stopped':'idle';
+    say(S.ses.secs.length?`Session at ${S.ses.bpm} bpm, ${S.ses.secs.length} section${S.ses.secs.length>1?'s':''}.`:'Tinebox Loop',S.ses.secs.length?'Connect the TP-7 (Settings), then switch 2 plays. '+pendTxt():'Connect the TP-7 (Settings), then tap switch 6 four times for a session.'); }
+  else say('Tinebox Loop','Connect the TP-7 (Settings), then tap switch 6 four times for a session.');
+  showTab('Loop');
+  // MIDI browsers grant access without a prompt: connect at once (a tap is still needed for audio)
+  if(navigator.requestMIDIAccess) setTimeout(()=>{ midiConnect().then(ok=>{ if(ok&&midiReady()&&R.sysex) sxAlive().then(m=>{ if(m) setMidiNote(`TP-7 answers (${m} mode).`); renderAll(); }); }); },300);
+  const unlock=()=>{ initAudio(); document.removeEventListener('pointerdown',unlock,true); document.removeEventListener('keydown',unlock,true); };
+  document.addEventListener('pointerdown',unlock,true); document.addEventListener('keydown',unlock,true);
+})();
+
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
