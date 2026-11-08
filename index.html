@@ -369,15 +369,30 @@ function seamOf(y,sr,away){ const W=Math.round(0.06*sr), a=Math.round((away||0.3
 // peaks, no fine pitch search, a frame every 5.3 ms. Build 1's version very likely overloaded the audio thread at 96 kHz.
 function Live(sr,o){ o=o||{}; this.sr=sr; this.dec=new Decim(sr,12000); this.N=o.N||1024; this.T=new Tracker(this.dec.sr,this.N,{skew:0.78,rel:0.2,poly:4,prune:true,fine:false});
   this.buf=new Float32Array(this.N*2); this.nb=0; this.hop=Math.max(16,Math.round(this.dec.sr*0.0053)); this.since=0; this.tmp=new Float32Array(4096);
-  this.V=[]; this.map={}; this.set(o.preset||'pad',o.oct||0); this.pk=1e-3; this.seen={}; this.gain=o.gain==null?1:o.gain; }
+  this.V=[]; this.map={}; this.set(o.preset||'pad',o.oct||0); this.pk=1e-3; this.seen={}; this.gain=o.gain==null?1:o.gain;
+  // build 4 (8 Nov: "the synth tends to clip quite a lot"): up to 8 voices at full level summed to 2 to 4 times full scale. Now the voices
+  // share the level (1/sqrt of how many sound), and a limiter holds each block under 0.5, with no added delay (it sees the whole block).
+  this.vg=1; this.lg=1; this.lim=0.5;
+  // the app's own sound comes back into the guitar input in normal mode (8 Nov: -37.8 dBFS for clicks near full scale). A frame whose
+  // input is no louder than 3 times that echo of the synth is taken as the echo, so the synth cannot keep itself going.
+  this.bleed=o.bleed==null?0.02:o.bleed; this.dly=o.dly==null?0.07:o.dly; this.oq=new Float32Array(64); this.oi=0; this.bs=0; this.bn=Math.max(1,Math.round(sr*0.01)); this.bp=0; this.inPk=0; }
 Live.prototype.set=function(p,oct){ this.P=Object.assign({},PRESETS[p]||PRESETS.pad); this.oct=(this.P.oct||0)+(oct||0); this.V.forEach(v=>v.off()); this.V=[]; this.map={}; };
 Live.prototype.feed=function(x,n,out){ const k=this.dec.run(x,n,this.tmp,0), N=this.N;
+  for(let i=0;i<n;i++){ const a=x[i]<0?-x[i]:x[i]; if(a>this.inPk) this.inPk=a; }
   // keep the last N decimated samples
   if(this.nb+k>this.buf.length){ const keep=N; this.buf.copyWithin(0,this.nb-keep,this.nb); this.nb=keep; }
   this.buf.set(this.tmp.subarray(0,k),this.nb); this.nb+=k; this.since+=k;
-  if(this.nb>=N&&this.since>=this.hop){ this.since=0; this.step(this.T.frame(this.buf,this.nb-N)); }
-  for(let i=0;i<n;i++) out[i]=0; for(const v of this.V) v.render(out,0,n,this.P.gain*this.gain);
+  if(this.nb>=N&&this.since>=this.hop){ this.since=0; const echo=this.bleed*this.echoPk(), r=this.T.frame(this.buf,this.nb-N); if(this.inPk<3*echo) r.notes=[]; this.inPk=0; this.step(r); }
+  const nv=this.V.length, want=1/Math.sqrt(Math.max(1,nv)); this.vg+=(want-this.vg)*(want<this.vg?0.5:0.05);
+  for(let i=0;i<n;i++) out[i]=0; for(const v of this.V) v.render(out,0,n,this.P.gain*this.gain*this.vg);
+  let pk=0; for(let i=0;i<n;i++){ const a=out[i]<0?-out[i]:out[i]; if(a>pk) pk=a; }
+  const g0=this.lg, lim=pk*g0>this.lim?this.lim/pk:Math.min(1,g0+(1-g0)*0.004*n/128); this.lg=lim;
+  if(lim<g0||lim===g0){ if(lim!==1) for(let i=0;i<n;i++) out[i]*=lim; } else for(let i=0;i<n;i++) out[i]*=g0+(lim-g0)*i/n;
+  // the synth's own peak, every 10 ms, for the echo check a round trip later
+  let op=0; for(let i=0;i<n;i++){ const a=out[i]<0?-out[i]:out[i]; if(a>op) op=a; } if(op>this.bp) this.bp=op; this.bs+=n; if(this.bs>=this.bn){ this.oq[this.oi++&63]=this.bp; this.bp=0; this.bs=0; }
   this.V=this.V.filter(v=>!v.idle()); };
+// the loudest the synth was from the round trip minus 30 ms to the round trip plus 30 ms ago
+Live.prototype.echoPk=function(){ const a=Math.round((this.dly-0.03)/0.01), b=Math.round((this.dly+0.03)/0.01); let m=0; for(let j=Math.max(1,a);j<=Math.min(63,b);j++){ const v=this.oq[(this.oi-j)&63]; if(v>m) m=v; } return m; };
 Live.prototype.step=function(r){ const P=this.P, now={}; let mx=0; for(const nt of r.notes) if(nt.a>mx) mx=nt.a; this.pk=Math.max(mx,this.pk*0.9995);
   let ns=r.notes.filter(nt=>nt.a>=0.08*this.pk);
   if(P.mono&&ns.length) ns=[ns.reduce((a,b)=>(P.mono==='low'?b.m<a.m:b.m>a.m)?b:a)];
@@ -403,7 +418,7 @@ return {fft,Decim,Tracker,onsets,transcribe,keyOf,snapToKey,PRESETS,Voice,render
    While you play, the TP-7 stands still and armed: the guitar then reaches the app over USB (8 Oct) and nothing records.
    Build 2 (8 Nov, your report of build 1): in edit mode, armed on line 1, you heard your guitar and the app heard it, but you did not
    hear the app. The stance is now normal mode, armed (record sources line 1, USB 1, USB 2), unless the diagnostics find otherwise. */
-const APP_BUILD='3 (8 Nov 2026)';
+const APP_BUILD='4 (8 Nov 2026)';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -481,6 +496,7 @@ const G=GDSP();
 class TLIn extends AudioWorkletProcessor{
   constructor(){ super(); this.buf=new Float32Array(2048); this.n=0; this.t0=0; this.live=null; this.on=false; this.m=new Float32Array(128);
     this.port.onmessage=e=>{ const d=e.data||{}; if('preview' in d){ this.on=!!d.preview; if(this.on){ if(!this.live) this.live=new G.Live(sampleRate,{preset:d.preset,oct:d.oct}); else this.live.set(d.preset,d.oct); } }
+      if(this.live&&d.bleed!=null){ this.live.bleed=d.bleed; this.live.dly=d.dly; }
       if(d.gain!=null&&this.live) this.live.gain=d.gain; }; }
   process(inputs,outputs){ const inp=inputs[0]||[], a=inp[0], b=inp[1], out=outputs[0]&&outputs[0][0], n=a?a.length:128, m=this.m;
     if(a){ for(let i=0;i<n;i++) m[i]=b?0.5*(a[i]+b[i]):a[i]; } else m.fill(0);
@@ -490,7 +506,17 @@ class TLIn extends AudioWorkletProcessor{
     // the live synth's share of the audio thread's time, once a second while it runs
     this.fr=(this.fr||0)+n; if(this.fr>=sampleRate){ if(this.on) this.port.postMessage({load:(this.busy||0)/(this.fr/sampleRate*1000)}); this.fr=0; this.busy=0; }
     return true; } }
-registerProcessor('tl-in',TLIn);`;
+registerProcessor('tl-in',TLIn);
+// build 4: a limiter on what you hear (loops, metronome, pads, live synth), ahead of the soft clip. No look-ahead and so no delay: each
+// block's gain comes from that block's own peak (the audio thread hands it over whole), and recovers over about 150 ms.
+class TLLim extends AudioWorkletProcessor{
+  constructor(){ super(); this.g=1; this.thr=0.75; }
+  process(inputs,outputs){ const inp=inputs[0]||[], out=outputs[0]||[]; if(!inp.length){ out.forEach(c=>c.fill(0)); return true; }
+    const n=inp[0].length; let pk=0; for(const c of inp) for(let i=0;i<n;i++){ const a=c[i]<0?-c[i]:c[i]; if(a>pk) pk=a; }
+    const g0=this.g, g1=pk*g0>this.thr?this.thr/pk:Math.min(1,g0+(1-g0)*(1-Math.exp(-n/(sampleRate*0.15)))); this.g=g1;
+    for(let ch=0;ch<out.length;ch++){ const a=inp[ch]||inp[0], o=out[ch]; if(g1<=g0) for(let i=0;i<n;i++) o[i]=a[i]*g1; else for(let i=0;i<n;i++) o[i]=a[i]*(g0+(g1-g0)*i/n); }
+    return true; } }
+registerProcessor('tl-lim',TLLim);`;
 function inChunk(t,x){ const sr=IN.sr, i0=Math.round(t*sr), R=IN.ring, M=IN.mask; let pk=0;
   for(let j=0;j<x.length;j++){ const v=x[j]; R[(i0+j)&M]=v; const a=v<0?-v:v; if(a>pk) pk=a; }
   IN.w=i0+x.length; IN.pk=Math.max(pk,IN.pk*0.9); IN.last=performance.now(); IN.taps.forEach(f=>{ try{ f(t,x); }catch(e){} }); }
@@ -508,6 +534,8 @@ async function openInput(){
   if(ctx.audioWorklet&&window.AudioWorkletNode){ const code=WORKLET();
     for(const url of [URL.createObjectURL(new Blob([code],{type:'application/javascript'})),'data:application/javascript;base64,'+btoa(unescape(encodeURIComponent(code)))]){
       try{ await ctx.audioWorklet.addModule(url); IN.kind='worklet'; break; }catch(e){ log('err','worklet: '+(e&&e.message||e)); } } }
+  if(IN.kind==='worklet'&&!A.lim){ try{ A.lim=new AudioWorkletNode(ctx,'tl-lim',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2],channelCount:2,channelCountMode:'explicit',channelInterpretation:'speakers'});
+      A.mon.disconnect(); A.mon.connect(A.lim); A.lim.connect(A.master); log('app','limiter on what you hear: on'); }catch(e){ A.lim=null; log('err','limiter: '+(e&&e.message||e)); } }
   if(IN.kind==='worklet'){ IN.node=new AudioWorkletNode(ctx,'tl-in',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],channelCount:2,channelCountMode:'explicit',channelInterpretation:'discrete'});
     IN.node.port.onmessage=e=>{ const d=e.data; if(d.load!=null){ IN.load=d.load; IN.loadMax=Math.max(IN.loadMax||0,d.load); if(d.load>0.5) log('err',`live synth used ${Math.round(d.load*100)} % of the audio thread`); return; } inChunk(d.t,d.x); }; }
   else { // fallback: a 256-sample script processor, the live synth on the main thread
@@ -520,8 +548,9 @@ async function openInput(){
   log('app',`audio input: ${IN.kind}, ${IN.nch} channel${IN.nch>1?'s':''}`); return true; }
 // the live synth while a synth layer records (the delay is the round trip plus about 20 ms of tracking)
 function preview(on){ const s=S.synth; if(!IN.node) return; on=on&&s.preview;
-  if(IN.kind==='worklet') IN.node.port.postMessage({preview:on,preset:s.preset,oct:s.oct,gain:1});
-  else { IN.pv=on; if(on){ if(!IN.live) IN.live=new G.Live(ctx.sampleRate,{preset:s.preset,oct:s.oct}); else IN.live.set(s.preset,s.oct); } } }
+  const bleed=S.tp.bleed!=null?S.tp.bleed:0.02, dly=RT();
+  if(IN.kind==='worklet') IN.node.port.postMessage({preview:on,preset:s.preset,oct:s.oct,gain:1,bleed,dly});
+  else { IN.pv=on; if(on){ if(!IN.live) IN.live=new G.Live(ctx.sampleRate,{preset:s.preset,oct:s.oct}); else IN.live.set(s.preset,s.oct); IN.live.bleed=bleed; IN.live.dly=dly; } } }
 // what the input heard over graph-time span [a, b), as arrival times (no round-trip shift); null if not all there yet or gone
 function inSlice(a,b){ if(!IN.ring) return null; const i0=Math.round(a*IN.sr), i1=Math.round(b*IN.sr); if(i1>IN.w||i0<IN.w-IN.ring.length+IN.sr) return null;
   const o=new Float32Array(Math.max(0,i1-i0)); for(let i=i0;i<i1;i++) o[i-i0]=IN.ring[i&IN.mask]; return o; }
@@ -676,33 +705,43 @@ async function tpUnperform(){ TP.perf=false; if(TP.arm&&TP.arm.v===0) return tru
 // S.ses: {id, bpm, file, fileEnd, cues:{note:tape s}, secs:[{id,name,bars,L,s,layers:[{id,type,state,printed,gain,muted,preset,oct}]}], cur, rt}
 // E.st: idle, prep, ready (session ready, nothing yet), first (a section's first pass), loop, stopped, printing, tape (TP-7 playback)
 const E={st:'idle',msg:'',small:'',play:null,next:null,rec:null,gen:0,ci:null,bufs:new Map(),raws:new Map(),busy:false};
-// The first section starts 0.25 s into the TP-7 recording (build 1 and 2: 2 s, a lead-in for the print passes; 8 Nov: "the loops are
-// significantly delayed (seconds) when playing on the TP-7"). 0.25 s keeps it clear of the tape's slow start (motor on). 32 bars at most.
-const TAPE0=0.25, CAP=32;
+// The first section starts 1.6 s into the TP-7 recording. Build 3 tried 0.25 s, timing those prints by the TP-7's start lag; test 2 on
+// hardware (8 Nov 16:37) showed that lag moving by about 40 ms from one start to the next (two passes of A 18 ms apart). 1.6 s gives
+// five position reports before the section, as in build 1 (passes within 1.1 ms). The app's TP-7 playback jumps over it with a cue.
+const TAPE0=1.6, CAP=32;
 const uid=()=>Math.random().toString(36).slice(2,10);
 const SES=()=>S.ses, SEC=k=>S.ses&&S.ses.secs[k];
-const barS=()=>240/(S.ses?S.ses.bpm:100), beatS=()=>60/(S.ses?S.ses.bpm:100);
+// Each section has its own tempo (build 4): a first pass is as long as your two presses, and its tempo moves to make it whole bars
+// (8 Nov: "the loop needs to respect the switch, where the BPM can be shifted to match the loop if necessary").
+const bpmOf=k=>{ const s=SEC(k); return s&&s.bpm||(S.ses?S.ses.bpm:100); };
+const bpmNow=()=>!S.ses?100:!S.ses.secs.length?S.ses.bpm:bpmOf(E.play?E.play.k:(S.ses.cur||0));
+const barS=()=>240/bpmNow(), beatS=()=>60/bpmNow();
+const bpmTxt=b=>(Math.round(b*10)/10).toString();
 const TRACK={gtr:0,syn:1,drm:2}, TNAME={gtr:'Guitar',syn:'Synth',drm:'Drums'};
 function say(m,small){ if(m!=null&&m!==E.msg) log('say',m); if(m!=null) E.msg=m; if(small!=null) E.small=small; renderScreen(); }
 const sleepTo=t=>sleep(Math.max(0,(t-ctx.currentTime)*1000));
 const at=(t,f)=>setTimeout(f,Math.max(0,(t-ctx.currentTime)*1000));
 
 // ------------------------------------------------------------------ the clock and the metronome
-const CLK={on:false,z0:0,n:0,clicks:[]};
-function clkStart(z){ const b=beatS(); CLK.z0=z; CLK.n=Math.ceil((ctx.currentTime+0.02-z)/b-1e-6); clkClear(z-0.02); CLK.on=true; }
+const CLK={on:false,z0:0,n:0,b:0.5,nz:null,nb:null,clicks:[]};
+function clkStart(z,b){ b=b||beatS(); CLK.b=b; CLK.nz=null; CLK.z0=z; CLK.n=Math.ceil((ctx.currentTime+0.02-z)/b-1e-6); clkClear(z-0.02); CLK.on=true; }
+// a new tempo (and bar 1) from time z on; the clicks before z stay on the old grid
+function clkRetime(z,b){ if(!CLK.on){ clkStart(z,b); return; } CLK.nz=z; CLK.nb=b; clkClear(z-0.002); CLK.n=Math.min(CLK.n,Math.ceil((z-0.002-CLK.z0)/CLK.b-1e-6)); }
 function clkStop(){ CLK.on=false; clkClear(ctx?ctx.currentTime:0); }
 function clkClear(after){ CLK.clicks=CLK.clicks.filter(c=>{ if(c.t>after){ c.g.forEach(g=>{ try{ g.disconnect(); }catch(e){} }); return false; } return c.t>ctx.currentTime-0.3; }); }
-const clkNext=t=>{ const b=barS(); return CLK.z0+Math.ceil((t-CLK.z0)/b-1e-6)*b; };
-const clkNear=t=>{ const b=barS(); return CLK.z0+Math.round((t-CLK.z0)/b)*b; };
-function tick(){ if(!ctx||ctx.state!=='running') return; const now=ctx.currentTime, ahead=now+0.15, b=beatS();
-  if(CLK.on&&S.ses){ for(;;){ const t=CLK.z0+CLK.n*b; if(t>ahead) break; if(t>=now+0.005&&S.metroOn&&!inCount(t)) CLK.clicks.push({t,g:knock(t,((CLK.n%4)+4)%4===0)}); CLK.n++; } }
+const clkNext=t=>{ const b=CLK.b*4; return CLK.z0+Math.ceil((t-CLK.z0)/b-1e-6)*b; };
+const clkNear=t=>{ const b=CLK.b*4; return CLK.z0+Math.round((t-CLK.z0)/b)*b; };
+function tick(){ if(!ctx||ctx.state!=='running') return; const now=ctx.currentTime, ahead=now+0.15;
+  if(CLK.on&&S.ses){ for(;;){ const t=CLK.z0+CLK.n*CLK.b;
+      if(CLK.nz!=null&&t>=CLK.nz-0.002){ CLK.z0=CLK.nz; CLK.b=CLK.nb; CLK.nz=null; CLK.n=Math.max(0,Math.ceil((now+0.005-CLK.z0)/CLK.b-1e-6)); continue; }
+      if(t>ahead) break; if(t>=now+0.005&&S.metroOn&&!inCount(t)) CLK.clicks.push({t,g:knock(t,((CLK.n%4)+4)%4===0)}); CLK.n++; } }
   // a drum take replays what it has so far, from the next time round
   const r=E.rec, P=E.play; if(r&&r.type==='drm'&&P){ for(const hh of r.hits){ for(;;){ const t=P.z+(hh.r+hh.n)*P.L+hh.ph; if(t>ahead) break; if(t>=now+0.005) drumV(ctx,A.pads,A.noise,DST,hh.i,t,hh.v,KITS[S.kit]); hh.n++; } } } }
 // the count-in: the bar before z gets a beep on each beat still ahead in place of the knock, and a large count on screen
-function countIn(z){ countOff(); const b=beatS(), c=E.ci={a:z-4*b,b:z,beat:b,g:[]}; clkClear(c.a-0.01);
+function countIn(z){ countOff(); const b=CLK.on?CLK.b:beatS(), c=E.ci={a:z-4*b,b:z,beat:b,g:[]}; clkClear(c.a-0.01);
   for(let i=0;i<4;i++){ const t=z-(4-i)*b; if(t<ctx.currentTime+0.03) continue; c.g.push(beep(t,i+1)); }
   // knocks already scheduled after the count-in bar must come back: let the clock reschedule from there
-  CLK.n=Math.min(CLK.n,Math.ceil((z-CLK.z0)/b-1e-6)); }
+  CLK.n=Math.min(CLK.n,Math.ceil((c.a-0.01-CLK.z0)/CLK.b-1e-6)); }
 function countOff(){ const c=E.ci; if(!c) return; c.g.forEach(g=>{ try{ g.disconnect(); }catch(e){} }); E.ci=null; }
 const inCount=t=>{ const c=E.ci; return !!(c&&t>=c.a-0.01&&t<c.b-0.01); };
 
@@ -736,20 +775,21 @@ async function prepSession(bpm,tapZ){ const e=tpProblem(); if(e){ say(e); return
   say(`New session at ${Math.round(bpm)} bpm: making a new TP-7 recording…`);
   // 1. half a second in normal mode with the app silent: a new recording with one track per record source (line 1, USB 1, USB 2)
   await tpUnperform(); await tpSetEdit(false); if(gone()) return; if(!(await tpToStart())) return fail('The tape did not go back to the start.');
-  // 1.3 s, so the position reports also give the TP-7's start lag (normal mode, armed, Start Session 0.25 s ahead, Play)
-  A.master.gain.value=0; let T=ctx.currentTime+0.5; const Pp=audioToPerf(T)+midiOffset(); midiSend([0xB0,14,127],T-0.35); midiSend(sxMsg(SXOP.session),T-0.25); midiSend(sxMsg(SXOP.play),T); midiSend(sxMsg(SXOP.stop),T+1.3); midiSend([0xB0,14,0],T+1.35);
-  await sleepTo(T+1.5); A.master.gain.value=1; const lf=posFit(Pp-50,0); if(lf.n>=3){ (S.tp.lag=S.tp.lag||{}).normal=Math.round(lf.c-Pp); log('st',`start lag (normal mode): ${S.tp.lag.normal} ms`); }
+  // 2 s (build 4): longer than the 1.6 s before section A, so the first print of A plays unarmed to 1.45 s (its timing from the position
+  // reports, its cue set on the way) and arms there, as every later section does. The reports also give the start lag here.
+  A.master.gain.value=0; let T=ctx.currentTime+0.5; const Pp=audioToPerf(T)+midiOffset(); midiSend([0xB0,14,127],T-0.35); midiSend(sxMsg(SXOP.session),T-0.25); midiSend(sxMsg(SXOP.play),T); midiSend(sxMsg(SXOP.stop),T+2.0); midiSend([0xB0,14,0],T+2.05);
+  await sleepTo(T+2.2); A.master.gain.value=1; const lf=posFit(Pp-50,0); if(lf.n>=3){ (S.tp.lag=S.tp.lag||{}).normal=Math.round(lf.c-Pp); log('st',`start lag (normal mode): ${S.tp.lag.normal} ms`); }
   await sleep(400); if(gone()) return; const f=await tpFileNow(); if(gone()) return;
-  // 2. that half second recorded the guitar on track 1 too: wipe it (input erase, armed over the first second)
+  // 2. those 2 s recorded the guitar on track 1 too: wipe them (input erase, armed over the first 2.3 s)
   say('New session: wiping track 1 at the start…'); let r=await tpEditTo(0,TPIN.erase); if(r) return fail(r); if(!(await tpToStart())) return fail('The tape did not go back to the start.');
-  T=ctx.currentTime+0.4; midiSend([0xB0,14,127],T-0.3); midiSend(sxMsg(SXOP.play),T); midiSend([0xB0,14,0],T+1.6); midiSend(sxMsg(SXOP.stop),T+1.66); await sleepTo(T+2.0); if(gone()) return;
+  T=ctx.currentTime+0.4; midiSend([0xB0,14,127],T-0.3); midiSend(sxMsg(SXOP.play),T); midiSend([0xB0,14,0],T+2.3); midiSend(sxMsg(SXOP.stop),T+2.36); await sleepTo(T+2.7); if(gone()) return;
   // 3. the round trip: track 1 from USB 1, armed while standing, four clicks out and back in
   say('New session: measuring the round trip…'); r=await tpEditTo(0,TPIN.usb1); if(r) return fail(r); await tpToStart(); await tpArm(true);
   const rt=await measureRT(); await tpArm(false); if(gone()) return;
   if(rt.rt!=null){ S.tp.rt[setupKey()]=rt.rt; } else log('err',`round trip not measured (${rt.why})`);
   // 4. the performance stance: track 1, line 1, armed, standing
   r=await tpPerform(); if(r) return fail(r); if(gone()) return;
-  S.ses={id:uid(),bpm:Math.round(bpm*10)/10,created:Date.now(),file:f,fileEnd:f?f.frames/Math.max(1,f.sr):1.3,cues:{},secs:[],cur:0,rt:rt.rt!=null?rt.rt:RT()}; save();
+  S.ses={id:uid(),bpm:Math.round(bpm*10)/10,created:Date.now(),file:f,fileEnd:f?f.frames/Math.max(1,f.sr):2.0,cues:{},secs:[],cur:0,rt:rt.rt!=null?rt.rt:RT()}; save();
   E.bufs.clear(); E.raws.clear(); E.st='ready';
   const w=[]; if(!f) w.push('The TP-7 sent no file notice.'); else if(f.b9<3) w.push(`The new recording has ${f.b9} track${f.b9>1?'s':''}: set the TP-7's record sources to line 1, USB 1 and USB 2 once.`);
   if(rt.rt==null) w.push(`Round trip not measured (${rt.why}); takes may sit off the beat.`);
@@ -766,25 +806,29 @@ async function measureRT(){ const n=5, base=ctx.currentTime+0.2, step=0.3, sr=ct
   const m=medOf(res), ok=res.filter(v=>Math.abs(v-m)<0.003); if(ok.length<3) return {rt:null,why:`clicks came back ${res.map(v=>(v*1000).toFixed(1)).join(', ')} ms apart`,res};
   return {rt:ok.reduce((a,b)=>a+b,0)/ok.length,res}; }
 
-// ------------------------------------------------------------------ the first pass of a section: from the bar line nearest the press
+// ------------------------------------------------------------------ the first pass of a section: from your press to your press
+// Build 4: the loop is exactly as long as the time between your two presses; the section's tempo moves to the nearest tempo that makes
+// it whole bars (a 2-bar loop closed 0.1 s late at 88 bpm: 86.5 bpm). Settings, "Loops in whole bars" gives build 3's behaviour.
 function firstStart(type,S0,via){ E.rec={type,first:true,S0,via:via||null,hits:type==='drm'?[]:null}; E.st='first'; E.play=null; if(type==='syn') preview(true);
   E.capT=at(S0+CAP*barS()-0.3,()=>{ if(E.rec&&E.rec.first&&E.rec.S0===S0) firstClose(S0+CAP*barS(),null); });
-  say(type==='drm'?'Recording drums: play the pads. Rec again closes the loop on the nearest bar line.':via==='next'?'Recording a new section. Switch 1 (guitar) or 5 (synth) closes it; Rec on the Pads tab turns it into drums.':type==='syn'?'Recording a synth loop. Switch 5 again closes it.':'Recording. Switch 1 again closes the loop.',''); renderAll(); }
+  say(type==='drm'?'Recording drums: play the pads. Rec again closes the loop.':via==='next'?'Recording a new section. Switch 1 (guitar) or 5 (synth) closes it; Rec on the Pads tab turns it into drums.':type==='syn'?'Recording a synth loop. Switch 5 again closes it.':'Recording. Switch 1 again closes the loop.',''); renderAll(); }
 // Rec on the Pads tab during a guitar first pass (one that Next started, say) makes it a drum pass from its start
 function firstToDrums(){ const r=E.rec; if(!r||!r.first||r.type==='drm') return; preview(false); r.type='drm'; r.hits=[]; r.via=null; say('This first pass is drums now: play the pads. Rec again closes it.',''); renderAll(); }
-async function firstClose(h,closer,stopAfter){ const r=E.rec; if(!r||!r.first) return; const bar=barS();
-  if(h-r.S0<0.5*bar&&!stopAfter){ say('Too soon to close: tap again at the end of your loop.'); return; }
-  clearTimeout(E.capT); const n=clamp(Math.round((h-r.S0)/bar),1,CAP), E1=r.S0+n*bar, L=n*bar, type=r.via==='next'&&closer?closer:r.type;
+async function firstClose(h,closer,stopAfter){ const r=E.rec; if(!r||!r.first) return; const bar=barS(), base=bpmNow(), raw=h-r.S0;
+  if(raw<0.5*bar&&!stopAfter){ say('Too soon to close: tap again at the end of your loop.'); return; }
+  clearTimeout(E.capT); const free=!S.loopBars, n=clamp(Math.round(raw/bar),1,CAP), L=free?Math.max(raw,0.25):n*bar, E1=r.S0+L, bpm=free?240*n/L:base, type=r.via==='next'&&closer?closer:r.type;
   E.rec=null; preview(false);
   const ses=S.ses, k=ses.secs.length, s=k?ses.secs[k-1].s+ses.secs[k-1].L:TAPE0;
-  const sec={id:uid(),name:LETTERS[k%26]+(k>=26?Math.floor(k/26)+1:''),bars:n,L,s,layers:[]}, l=newLayer(type); sec.layers.push(l); ses.secs.push(sec); ses.cur=k; save();
-  log('st',`section ${sec.name}: ${n} bar${n>1?'s':''}, first pass ${TNAME[type]}`);
-  let P=null; if(!stopAfter){ P=E.play={k,z:E1,L,srcs:new Map()}; E.st='loop'; say(`Section ${sec.name}: ${n} bar${n>1?'s':''}, looping.`,pendTxt()); }
+  const sec={id:uid(),name:LETTERS[k%26]+(k>=26?Math.floor(k/26)+1:''),bars:n,L,s,bpm,layers:[]}, l=newLayer(type); sec.layers.push(l); ses.secs.push(sec); ses.cur=k; if(k===0) ses.bpm=bpm; save();
+  const moved=Math.abs(bpm-base)>=0.05, tTxt=moved?` Tempo ${bpmTxt(bpm)} bpm (was ${bpmTxt(base)}).`:'';
+  log('st',`section ${sec.name}: ${n} bar${n>1?'s':''}, ${L.toFixed(3)} s, ${bpmTxt(bpm)} bpm (was ${bpmTxt(base)}), first pass ${TNAME[type]}`);
+  let P=null; if(!stopAfter){ P=E.play={k,z:E1,L,srcs:new Map()}; E.st='loop'; clkStart(E1,60/bpm); say(`Section ${sec.name}: ${n} bar${n>1?'s':''}, looping.${tTxt}`,pendTxt()); }
+  else if(moved) say(null,tTxt.trim());
   renderAll();
-  if(type==='drm'){ // drums: the hits from the bar line on (a hit up to 50 ms early counts as on it); after the loop's end they belong to no loop
-    const hits=r.hits.map(x=>({ph:Math.max(0,x.t-r.S0),i:x.i,v:x.v})).filter(x=>x.ph<L&&x.ph>=0), y=await renderDrums(hits,L), sr=ctx.sampleRate;
+  if(type==='drm'){ // drums: the hits from your press on (a hit up to 50 ms early counts as on it), snapped (if set) to this section's tempo
+    const q=S.quant?240/bpm/S.quant*4:0, hits=r.hits.map(x=>{ let ph=Math.max(0,x.t-r.S0); if(q) ph=(Math.round(ph/q)*q)%L; return {ph,i:x.i,v:x.v}; }).filter(x=>x.ph<L&&x.ph>=0), y=await renderDrums(hits,L), sr=ctx.sampleRate;
     E.bufs.set(l.id,mkBuf(y,Math.round(L*sr))); storeLayer(l,y,sr); if(P&&E.play===P) layerPlay(P,l,E1); log('st',`drum first pass: ${hits.length} hits`);
-    if(stopAfter) say(`Section ${sec.name}: ${n} bar${n>1?'s':''}. Stopped.`,pendTxt()); renderAll(); return; }
+    if(stopAfter) say(`Section ${sec.name}: ${n} bar${n>1?'s':''}. Stopped.${tTxt}`,pendTxt()); renderAll(); return; }
   // round 1 plays what is in at once, the rest of round 1 once it is in; from round 2 one looping source
   const sr=ctx.sampleRate, N=Math.round(L*sr), availH=IN.w/IN.sr-RT()-0.005, a=Math.min(E1,availH);
   if(P&&a>r.S0+0.05){ const x=takeSlice(r.S0,a); if(x){ fadeEdge(x,sr,0.0015,0); const b=mkBuf(x,N); layerOnce(P,l.id,b,0,a-r.S0,E1); } }
@@ -793,7 +837,7 @@ async function firstClose(h,closer,stopAfter){ const r=E.rec; if(!r||!r.first) r
   if(type==='syn') E.raws.set(l.id,{x:y,off:0,N}); storeLayer(l,y,sr); if(type==='syn') IDB.put(S.ses.id+':'+l.id+':raw',{x:y,off:0,N,sr});
   if(P&&E.play===P){ if(a<E1) layerOnce(P,l.id,buf,Math.max(0,a-r.S0),L,E1); layerPlay(P,l,E1+L); }
   if(type==='syn') synthLayer(l,k);
-  if(stopAfter) say(`Section ${sec.name}: ${n} bar${n>1?'s':''}. Stopped.`,pendTxt()); }
+  if(stopAfter) say(`Section ${sec.name}: ${n} bar${n>1?'s':''}. Stopped.${tTxt}`,pendTxt()); }
 function fadeEdge(x,sr,a,b){ const na=Math.min(x.length,Math.round(a*sr)), nb=Math.min(x.length,Math.round(b*sr)); for(let i=0;i<na;i++) x[i]*=i/na; for(let i=0;i<nb;i++) x[x.length-1-i]*=i/nb; }
 function newLayer(type){ return {id:uid(),type,state:S.autoAccept?'accepted':'pending',printed:false,gain:type==='syn'?S.synth.level:1,muted:false,preset:type==='syn'?S.synth.preset:null,oct:type==='syn'?S.synth.oct:0,glide:!!S.synth.glide,snap:!!S.synth.snap,created:Date.now()}; }
 // switch 2 in the first bar of a first pass: a false start, nothing kept
@@ -835,7 +879,7 @@ async function synthLayer(l,k){ let raw=E.raws.get(l.id); if(!raw){ const d=awai
 // ------------------------------------------------------------------ drums: what you play on the pads, as hits on the loop
 function padHit(i,ev){ initAudio(); const now=ctx.currentTime; drumNow(i,now,0.9);
   if(PADCAL.on){ PADCAL.hits.push(p2h(evT(ev))); if(PADCAL.hits.length>=8) padCalDone(); return; }
-  const r=E.rec; if(r&&r.type==='drm'&&r.first){ const h=p2h(evT(ev))-(S.padFix||0)/1000; if(h>=r.S0-0.05){ let t=h; if(S.quant){ const q=barS()/S.quant*4; t=r.S0+Math.round((h-r.S0)/q)*q; } r.hits.push({t,i,v:0.9}); } return; }
+  const r=E.rec; if(r&&r.type==='drm'&&r.first){ const h=p2h(evT(ev))-(S.padFix||0)/1000; if(h>=r.S0-0.05) r.hits.push({t:h,i,v:0.9}); return; }
   if(r&&r.type==='drm'&&E.play){ const P=E.play, fix=(S.padFix||0)/1000, h=p2h(evT(ev))-fix; let ph=phase(h,P.z,P.L);
     if(S.quant){ const q=barS()/S.quant*4; ph=(Math.round(ph/q)*q)%P.L; } const rr=Math.floor((h-P.z)/P.L); r.hits.push({ph,i,v:0.9,r:rr,n:1}); } }
 async function renderDrums(hits,L){ const sr=ctx.sampleRate, N=Math.round(L*sr), tail=Math.round(2*sr), OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
@@ -871,27 +915,30 @@ async function goSection(k2,newSec){ const P=E.play; if(!P||E.next) return; cons
   if(E.rec&&!E.rec.first) await layerStop(ctx.currentTime,true);
   loopEnd(P,W); const G0=E.gen;
   if(newSec){ E.next={W,newSec:true}; say('A new section starts at the end of this time round…','Rec on the Pads tab makes it a drum pass.'); at(W-0.01,()=>{ if(G0!==E.gen) return; E.next=null; const t=E.nextType||'gtr'; E.nextType=null; firstStart(t,W,t==='drm'?null:'next'); }); }
-  else { await ensureBufs(k2); if(G0!==E.gen) return; const P2=loopStart(k2,W); E.next={W,k:k2}; S.ses.cur=k2; say(`Section ${SEC(k2).name} next…`);
+  else { await ensureBufs(k2); if(G0!==E.gen) return; const P2=loopStart(k2,W); E.next={W,k:k2}; S.ses.cur=k2; clkRetime(W,60/bpmOf(k2)); say(`Section ${SEC(k2).name} next…`);
     at(W-0.005,()=>{ if(G0!==E.gen) return; E.play=P2; E.next=null; say(`Section ${SEC(k2).name} is looping.`,pendTxt()); renderAll(); }); }
   renderAll(); }
-// from a stop: a count-in bar, then section k loops (o.rec: start a layer of that type on its first beat; o.newSec: a first pass)
+// from a stop: section k loops at once (build 4; build 3 counted in a bar first). o.rec: start a layer of that type with it; o.newSec: a
+// first pass. Settings, Count-in: a bar of count-in first, as before.
 async function playFrom(k,o){ o=o||{}; const e=await perfReady(); if(e) say(e); const G0=++E.gen;
-  if(!o.newSec) await ensureBufs(k); if(G0!==E.gen) return; await openInput();
-  const bar=barS(), z=ctx.currentTime+0.35+bar; clkStart(z); countIn(z);
-  if(o.newSec){ E.st='first'; E.next={W:z,newSec:true}; say('Count-in: a new section…'); at(z-0.01,()=>{ if(G0!==E.gen) return; E.next=null; const t=E.nextType||o.rec||'gtr'; E.nextType=null; firstStart(t,z,t==='drm'?null:'next'); }); renderAll(); return; }
-  S.ses.cur=k; const P=loopStart(k,z); E.play=P; E.st='loop'; say(`Count-in: section ${SEC(k).name}…`,pendTxt());
+  if(!o.newSec) await ensureBufs(k); if(G0!==E.gen) return; await openInput(); if(G0!==E.gen) return;
+  if(!o.newSec) S.ses.cur=k; const ci=!!S.countIn, z=ci?ctx.currentTime+0.35+barS():ctx.currentTime+0.03; clkStart(z,60/bpmOf(o.newSec?S.ses.cur:k)); if(ci) countIn(z);
+  if(o.newSec){ E.st='first'; E.next={W:z,newSec:true}; say(ci?'Count-in: a new section…':'A new section…'); at(z-0.01,()=>{ if(G0!==E.gen) return; E.next=null; const t=E.nextType||o.rec||'gtr'; E.nextType=null; firstStart(t,z,t==='drm'?null:'next'); }); renderAll(); return; }
+  const P=loopStart(k,z); E.play=P; E.st='loop'; say(ci?`Count-in: section ${SEC(k).name}…`:`Section ${SEC(k).name} is looping.`,pendTxt());
   if(o.rec) at(z-0.01,()=>{ if(G0!==E.gen||E.play!==P) return; layerStart(o.rec,z); }); else at(z,()=>{ if(G0===E.gen&&E.play===P) say(`Section ${SEC(k).name} is looping.`,pendTxt()); });
   renderAll(); }
 // the TP-7 back in the performance stance after printing or tape playback
-async function perfReady(){ if(TP.perf&&TP.stance===S.tp.stance&&TP.arm&&TP.arm.v===1) return ''; const e=tpProblem(); if(e) return e+' The app loops anyway, but cannot hear the guitar.'; return await tpPerform(); }
+let PR=null;
+async function perfReady(){ if(TP.perf&&TP.stance===S.tp.stance&&TP.arm&&TP.arm.v===1) return ''; const e=tpProblem(); if(e) return e+' The app loops anyway, but cannot hear the guitar.';
+  if(!PR) PR=tpPerform().finally(()=>{ PR=null; }); return await PR; }
 // stop: the loop and the metronome; a layer being recorded is kept (to keep or drop); the print follows if anything is kept
 async function stopAll(quiet,h){ const now=ctx?ctx.currentTime:0; if(h==null) h=now;
-  if(E.st==='first'&&E.rec){ if(h-E.rec.S0<barS()) firstCancel(); else { const r=E.rec; await firstClose(h,r.type,true); } }
+  if(E.st==='first'&&E.rec){ if(h-E.rec.S0<0.5*barS()) firstCancel(); else { const r=E.rec; await firstClose(h,r.type,true); } }
   E.gen++; countOff(); clearTimeout(E.capT); E.next=null; E.nextType=null;
   if(E.rec&&!E.rec.first) await layerStop(h,true);
   if(E.play){ loopEnd(E.play,now); E.play=null; } clkStop(); preview(false);
   if(['loop','first','ready','stopped'].includes(E.st)) E.st=S.ses&&S.ses.secs.length?'stopped':(S.ses?'ready':'idle');
-  if(E.st==='ready') clkStart(clkFirst());
+  if(E.st==='ready') clkStart(clkFirst(),60/S.ses.bpm);
   if(!quiet){ say(E.cancelled?'Cancelled: nothing kept.':'Stopped.',pendTxt()); if(S.printOnStop&&toPrint().length) printSoon(); } E.cancelled=false; renderAll(); }
 
 // ================================================================== the TP-7 as the tape
@@ -911,8 +958,10 @@ function printCancelSoon(){ if(printT){ clearTimeout(printT); printT=null; E.pri
 // 17 ms). Each report bounds the offset c (arrival time of tape 0): c ≤ t − p (late arrival only lowers it) and c > t − p − 31.25.
 // The tightest bounds over all reports give c to a few ms; if they disagree (a late report), the lowest t − p less half a step.
 const QP=31.25;
-function fitOf(p){ if(!p.length) return {n:0}; const d=p.map(x=>x[0]-x[1]), hi=Math.min(...d), lo=Math.max(...d)-QP;
-  const c=lo<=hi?(lo+hi)/2:hi-QP/(p.length+1); return {n:p.length,c,lo,hi,width:lo<=hi?hi-lo:null,spread:Math.max(...d)-Math.min(...d)}; }
+// Build 4: a report that arrives a step late (8 Nov, while armed: the reports of a whole pass disagreed) is left out: on time, every
+// t − p lies below hi + 31.25.
+function fitOf(p){ if(!p.length) return {n:0}; const d0=p.map(x=>x[0]-x[1]), hi=Math.min(...d0), d=d0.filter(v=>v<hi+QP), lo=Math.max(...d)-QP;
+  const c=lo<=hi?(lo+hi)/2:hi-QP/(d.length+1); return {n:p.length,late:d0.length-d.length,c,lo,hi,width:lo<=hi?hi-lo:null,spread:Math.max(...d0)-Math.min(...d0)}; }
 const posFit=(P0,q,from)=>fitOf(TP.posLog.filter(x=>x[0]>=P0&&x[1]>=q*1000+(from==null?350:from)&&x[1]<1e7));
 const posFitQ=(P0,q)=>posFit(P0,q,150);
 function cueBefore(t){ let best=null; const C=S.ses.cues||{}; for(const n in C){ const pos=C[n]; if(pos<=t&&(!best||pos>best.pos)) best={n:+n,pos}; } return best; }
@@ -924,6 +973,9 @@ function cuesOnTheWay(a,b,tP,tag){ const ses=S.ses, md=S.tp.mDelay, set=[];
 function trackMix(job){ const sec=SEC(job.k), sr=ctx.sampleRate, N=Math.round(sec.L*sr), mix=ctx.createBuffer(1,N,sr), md=mix.getChannelData(0); let any=false;
   for(const l of job.layers){ const b=E.bufs.get(l.id); if(!b) continue; const d=b.getChannelData(0), g=gainOf(l), M=d.length; any=true;
     if(M===N) for(let i=0;i<N;i++) md[i]+=d[i]*g; else for(let i=0;i<N;i++){ const x=i*M/N, j=Math.floor(x), f=x-j; md[i]+=(d[j%M]*(1-f)+d[(j+1)%M]*f)*g; } }
+  // the output's soft clip starts at 0.8: a hotter mix (several synth layers on one track, say) is turned down rather than clipped
+  let pk=0; for(let i=0;i<N;i++){ const a=md[i]<0?-md[i]:md[i]; if(a>pk) pk=a; }
+  if(pk>0.78){ const g=0.78/pk; for(let i=0;i<N;i++) md[i]*=g; log('st',`print ${sec.name} track ${job.track+1}: mix peaked at ${dB(pk)}, turned down ${(-20*Math.log10(g)).toFixed(1)} dB so it does not clip`); }
   return any?mix:null; }
 async function printAll(){ const e=tpProblem(); if(e){ say(e); return; } if(!['stopped','ready'].includes(E.st)) return; printCancelSoon();
   const by={}; toPrint().forEach(({l,k})=>{ const key=k+':'+TRACK[l.type]; (by[key]=by[key]||{k,track:TRACK[l.type],layers:[]}).layers.push(l); });
@@ -960,10 +1012,12 @@ async function printPass(job){ const ses=S.ses, sec=SEC(job.k); await ensureBufs
   else if(!(await tpToStart())) return 'The tape did not go back to the start.';
   const pred=sec.s-q2<1.3, lag=(S.tp.lag&&S.tp.lag.edit!=null)?S.tp.lag.edit:35;
   // playback stops at the end of the recording, so a section beyond it is armed before the end is reached; the first section always
-  const armP=Math.min(sec.s-0.15,end-0.3), early=pred||armP<q2+0.45; if(early&&!(await tpArm(true))) return 'The TP-7 did not arm.';
-  const P0=await startPass(); let fit=null, tP;
+  const armP=Math.min(sec.s-0.15,end-0.3), early=pred||armP<q2+0.45||end<sec.s; if(early&&!(await tpArm(true))) return 'The TP-7 did not arm.';
+  const P0=await startPass(); let fit=null, tP, cues=[];
   if(pred) tP=p=>P0+lag+(p-q2)*1000;
   else { if(!(await waitFor(()=>posFit(P0,q2).n>=3,4000,10))){ mNow([0xB0,14,0]); mNow(sxMsg(SXOP.stop)); return 'The TP-7 sent no position reports while playing.'; }
+    // cues on the way, from the first three reports (a cue is a start point: a few ms do not matter, and it catches section A's at 1.2 s)
+    const f3=posFit(P0,q2); cues=early?[]:cuesOnTheWay(q2+0.5,armP-0.2,p=>f3.c+p*1000,tag);
     // more reports while the section is still more than 0.3 s away (ten span the 31 ms steps several times over)
     await waitFor(()=>{ const f=posFit(P0,q2); return f.n>=10||f.c+sec.s*1000-performance.now()<300; },3000,10);
     fit=posFit(P0,q2); tP=p=>fit.c+p*1000; }
@@ -971,7 +1025,7 @@ async function printPass(job){ const ses=S.ses, sec=SEC(job.k); await ensureBufs
   if(g0<ctx.currentTime+0.04){ mNow([0xB0,14,0]); mNow(sxMsg(SXOP.stop)); return `Too little lead-in before section ${sec.name}.`; }
   const src=ctx.createBufferSource(); src.buffer=mix; src.connect(A.print); src.start(g0);
   if(!early) midiSendPerf([0xB0,14,127],tP(armP),tag);
-  const cues=fit?cuesOnTheWay(q2+0.5,(early?q2:armP)-0.2,tP,tag):[];
+
   // a quarter second past the section, so a TP-7 loop of the last section ends inside the recording
   const offP=sec.s+sec.L+0.25; midiSendPerf([0xB0,14,0],tP(offP),tag); midiSendPerf(sxMsg(SXOP.stop),tP(offP+0.3),tag);
   await sleep(Math.max(0,tP(offP+0.6)-performance.now()));
@@ -990,14 +1044,17 @@ async function tapePlay(k,loop){ const e=tpProblem(); if(e){ say(e); return; } p
   await stopAll(true); const sec=SEC(k); if(!sec) return; const G0=++E.gen; E.st='tape'; E.tape={k,loop}; renderAll();
   tpRelease(); if(TP.arm&&TP.arm.v===1){ TP.perf=false; mNow([0xB0,14,0]); await waitFor(()=>TP.arm&&TP.arm.v===0,400,5); } mNow([0xB0,17,0]); if(G0!==E.gen) return;
   const C=S.ses.cues, lg=S.tp.lag||{}; let n=null, q=0, P0, lag;
-  if(loop&&C[64+k]!=null){ n=64+k; q=C[n]; } else if(C[k]!=null){ n=k; q=C[k]; } else if(k>0){ const c=cueBefore(sec.s-(loop?1.2:0.3)); if(c){ n=c.n; q=c.pos; } }
+  // a loop needs a second or more of playback before its start (8 Nov: a loop point set 0.36 s after the start came out 20 ms short);
+  // section A loops from the start of the recording (1.6 s before it)
+  if(loop){ if(C[64+k]!=null){ n=64+k; q=C[n]; } else { const c=cueBefore(sec.s-1.2); if(c){ n=c.n; q=c.pos; } } }
+  else if(C[k]!=null){ n=k; q=C[k]; } else { const c=cueBefore(sec.s-0.3); if(c){ n=c.n; q=c.pos; } }
   if(n!=null){ if(TP.play&&TP.play.v===1){ mNow(sxMsg(SXOP.stop)); await sleep(80); if(G0!==E.gen) return; } P0=performance.now(); mNow([0x90,n,100]); TP.held=n; lag=lg.cue!=null?lg.cue:60; }
   else { if(!TP.play||TP.play.v!==0){ mNow(sxMsg(SXOP.stop)); await sleep(200); } TP.pos=null; mNow(sxMsg(SXOP.start)); await waitFor(()=>TP.pos===0,500,5); if(G0!==E.gen) return; P0=performance.now(); mNow(sxMsg(SXOP.play)); lag=lg.play!=null?lg.play:35; q=0; }
   E.tape={k,loop,P0,q,n}; say(`TP-7: playing section ${sec.name}${loop?' on a loop':''}.`,n===k||n===64+k?'':n!=null?`No cue for ${sec.name} yet: from the cue before it, setting its cue on the way.`:''); renderAll();
   // where the tape is: the start lag at first, the reports once they come
   let tP=p=>P0+lag+(p-q)*1000;
   if(loop){ const md=S.tp.mDelay, adj=S.tp.loopAdj;
-    await waitFor(()=>G0!==E.gen||posFit(P0,q).n>=3||tP(sec.s)+md-performance.now()<200,4000,10); if(G0!==E.gen) return; const f=posFit(P0,q); if(f.n>=3) tP=p=>f.c+p*1000;
+    await waitFor(()=>G0!==E.gen||posFit(P0,q,150).n>=3||tP(sec.s)+md-performance.now()<200,4000,10); if(G0!==E.gen) return; const f=posFit(P0,q,150); if(f.n>=3) tP=p=>f.c+p*1000;
     const tin=tP(sec.s)+md; if(tin<performance.now()+15){ log('err',`tape loop: section ${sec.name} began before the loop could be set`); say(`TP-7: playing section ${sec.name}; the loop could not be set in time.`); }
     else { midiSendPerf([0xB0,17,1],tin,'tape'); midiSendPerf([0xB0,17,2],tP(sec.s+sec.L)+md+adj,'tape'); } }
   // a second of reports: the real start lag for next time, and cues that are missing on the way
@@ -1023,15 +1080,15 @@ async function act2(a,h){ const st=E.st, ses=S.ses;
     if(st==='printing'){ E.printStop=true; E.after={play:true,rec:a}; say('Recording after this print pass…'); return; }
     if(st==='tape'){ await tapeStop(); return playFrom(ses.cur||0,{rec:a}); }
     if(st==='idle') return prepSession(ses?ses.bpm:(TAP.bpm||100));
-    if(st==='ready'){ printCancelSoon(); await openInput(); if(!CLK.on) clkStart(clkFirst()); return firstStart(a,clkNear(h)); }
+    if(st==='ready'){ printCancelSoon(); await openInput(); if(!CLK.on) clkStart(clkFirst()); return firstStart(a,S.loopBars?clkNear(h):h); }
     if(st==='first'){ if(E.rec) return firstClose(h,a); return; }
     if(st==='loop'){ if(E.next){ say('Changing section: record once it starts.'); return; } if(E.rec){ const t=E.rec.type; await layerStop(h); if(t===a) return; } return layerStart(a,h); }
     if(st==='stopped'){ printCancelSoon(); return playFrom(ses.cur||0,{rec:a}); }
     return; }
   // drums can come first (8 Nov: "start recording whichever layer I want first, such as drums"): Rec starts a section's first pass too
-  if(a==='drm'){ if(E.next&&E.next.newSec){ E.nextType=E.nextType==='drm'?null:'drm'; say(E.nextType?'The new section starts as drums: play the pads after the count-in.':'The new section starts as guitar.'); return; }
+  if(a==='drm'){ if(E.next&&E.next.newSec){ E.nextType=E.nextType==='drm'?null:'drm'; say(E.nextType?'The new section starts as drums: play the pads when it starts.':'The new section starts as guitar.'); return; }
     if(st==='loop'&&!E.next){ if(E.rec&&E.rec.type==='drm') return layerStop(h); if(E.rec) await layerStop(h); return layerStart('drm',h); }
-    if(st==='ready'){ printCancelSoon(); if(!CLK.on) clkStart(clkFirst()); return firstStart('drm',clkNear(h)); }
+    if(st==='ready'){ printCancelSoon(); if(!CLK.on) clkStart(clkFirst()); return firstStart('drm',S.loopBars?clkNear(h):h); }
     if(st==='first'){ if(E.rec&&E.rec.type==='drm') return firstClose(h,'drm'); if(E.rec) return firstToDrums(); return; }
     if(st==='stopped'){ printCancelSoon(); return playFrom(ses.cur||0,{rec:'drm'}); }
     if(st==='idle') return prepSession(ses?ses.bpm:(TAP.bpm||100));
@@ -1100,7 +1157,7 @@ function renderScreen(){ const st=$('#scState'), sm=$('#scSmall'); if(!st) retur
   const ch=[]; const tp=midiReady()?(TP.info?'TP-7':'TP-7 (no reply yet)'):'no TP-7';
   ch.push(`<span class="chip ${midiReady()?'on':'bad'}">${esc(tp)}</span>`);
   if(midiReady()) ch.push(`<span class="chip ${TP.arm&&TP.arm.v?'on':''}">${TP.arm&&TP.arm.v?'armed':'not armed'}</span>`);
-  if(S.ses) ch.push(`<span class="chip on">${S.ses.bpm} bpm</span>`);
+  if(S.ses) ch.push(`<span class="chip on">${bpmTxt(bpmNow())} bpm</span>`);
   if(S.ses&&S.ses.rt!=null) ch.push(`<span class="chip">round trip ${Math.round(S.ses.rt*1000)} ms</span>`);
   const p=pending().length; if(p) ch.push(`<span class="chip bad">${p} to keep or drop</span>`);
   const q=toPrint().length; if(q) ch.push(`<span class="chip">${q} to print</span>`);
@@ -1125,8 +1182,8 @@ function renderLoop(){ const el=$('#pLoop'); if(!el) return; const ses=S.ses, k=
     return `<button type="button" data-sw="${i}" class="${on?'on':''}"><span class="n">${i+1}</span><b>${SW_LABEL[i][0]}</b><small>${SW_LABEL[i][1]}</small></button>`; }).join('');
   let body='';
   if(!ses) body=`<div class="card"><h3>Start</h3><p class="note">1. Settings: Connect the TP-7 (USB-C) and allow MIDI and the microphone.</p><p class="note">2. On the TP-7: record sources line 1, USB 1 and USB 2; MIDI setting cue; auto start and count-in off.</p><p class="note">3. Tap switch 6 four times at your tempo. The app makes a new TP-7 recording (about 6 s), then the metronome starts. Switch 1 records guitar, switch 5 a synth loop.</p><div class="row"><button type="button" class="btn pri" data-act="newSes">New session at ${Math.round(TAP.bpm||100)} bpm</button></div></div>`;
-  else if(!sec) body=`<div class="card"><h3>Session at ${ses.bpm} bpm</h3><p class="note">${E.st==='ready'?'Start with any layer. Switch 1 records a guitar loop from the bar line nearest your press; switch 1 again closes it on the nearest bar line. Switch 5 does the same as a synth loop, Rec on the Pads tab as drums.':'Tap switch 1 or 5 to get the TP-7 ready again and record.'}</p></div>`;
-  else body=`<div class="card"><h3>Section ${esc(sec.name)} · ${sec.bars} bar${sec.bars>1?'s':''}<span class="note"> · ${k+1} of ${ses.secs.length}</span></h3>${sec.layers.length?sec.layers.map(l=>layerRow(l,k)).join(''):'<p class="note">No layers.</p>'}
+  else if(!sec) body=`<div class="card"><h3>Session at ${bpmTxt(ses.bpm)} bpm</h3><p class="note">${E.st==='ready'?(S.loopBars?'Start with any layer. Switch 1 records a guitar loop from the bar line nearest your press; switch 1 again closes it on the nearest bar line.':'Start with any layer. Switch 1 starts a guitar loop the moment you press it; switch 1 again closes it the moment you press, and the loop plays straight away. The tempo then moves a little so the loop is whole bars.')+' Switch 5 does the same as a synth loop, Rec on the Pads tab as drums.':'Tap switch 1 or 5 to get the TP-7 ready again and record.'}</p></div>`;
+  else body=`<div class="card"><h3>Section ${esc(sec.name)} · ${sec.bars} bar${sec.bars>1?'s':''} · ${bpmTxt(bpmOf(k))} bpm<span class="note"> · ${k+1} of ${ses.secs.length}</span></h3>${sec.layers.length?sec.layers.map(l=>layerRow(l,k)).join(''):'<p class="note">No layers.</p>'}
     ${E.st==='loop'?`<div class="row"><button type="button" class="btn sm" data-act="drm" aria-pressed="${!!(E.rec&&E.rec.type==='drm')}">${E.rec&&E.rec.type==='drm'?'Recording drums…':'Record drums'}</button><span class="note">play them on the Pads tab</span></div>`:''}</div>`;
   el.innerHTML=`<div class="sw">${swh}</div>${body}<p class="note">Keep sends a layer to the TP-7 when you stop (one straight pass per section and track: guitar on track 1, synth on 2, drums on 3). Drop removes it for good. Nothing reaches the TP-7 before you keep it.</p>`; }
 function renderPads(){ const el=$('#pPads'); if(!el) return; const rec=!!(E.rec&&E.rec.type==='drm');
@@ -1134,14 +1191,14 @@ function renderPads(){ const el=$('#pPads'); if(!el) return; const rec=!!(E.rec&
     <select data-set="quant" aria-label="Snap hits"><option value="0"${!S.quant?' selected':''}>As played</option><option value="8"${S.quant===8?' selected':''}>Snap to 8ths</option><option value="16"${S.quant===16?' selected':''}>Snap to 16ths</option></select></div>
     <div class="pads">${PADS.map((p,i)=>`<button type="button" class="pad" data-pad="${i}">${p}</button>`).join('')}</div>
     <div class="card"><div class="row"><span class="lbl">Pad timing: ${S.padFix==null?'not set (hits as they arrive)':`hits moved ${S.padFix} ms earlier`}</span><button type="button" class="btn sm" data-act="padCal">${PADCAL.on?`Tap on the clicks (${PADCAL.hits.length} of 8)`:'Set by tapping'}</button></div>
-    <p class="note">Rec records drums from now until you tap Rec again: a layer while a section loops, or a new section's first pass (in a ready session, or during the count-in after Next), closed on the nearest bar line. While a layer records, you hear what you played so far from the next time round. A touch screen reacts a little late; set the pad timing once so the hits land where you played them.</p></div>`; }
+    <p class="note">Rec records drums from now until you tap Rec again: a layer while a section loops, or a new section's first pass (in a ready session, or after Next until the new section starts), closed when you tap Rec again. While a layer records, you hear what you played so far from the next time round. A touch screen reacts a little late; set the pad timing once so the hits land where you played them.</p></div>`; }
 function secSum(sec){ const c={gtr:0,syn:0,drm:0}, pr={gtr:0,syn:0,drm:0}; sec.layers.forEach(l=>{ c[l.type]++; if(l.printed) pr[l.type]++; });
   const parts=Object.keys(c).filter(t=>c[t]).map(t=>`${c[t]} ${TNAME[t].toLowerCase()}`); const onTape=sec.layers.filter(l=>l.printed).length, kept=sec.layers.filter(l=>l.state==='accepted'&&!l.printed).length, pend=sec.layers.filter(l=>l.state==='pending').length;
   return `${parts.join(', ')||'empty'} · ${onTape?`${onTape} on the TP-7`:'nothing on the TP-7'}${kept?` · ${kept} to print`:''}${pend?` · ${pend} to keep or drop`:''}`; }
 function renderSecs(){ const el=$('#pSecs'); if(!el) return; const ses=S.ses;
   if(!ses||!ses.secs.length){ el.innerHTML='<div class="card"><p class="note">No sections yet. Record a loop first; Next (switch 4) on the last section records a new one.</p></div>'; return; }
   const tk=E.st==='tape'&&TP.pos!=null?tapeSecAt(TP.pos):-1;
-  el.innerHTML=ses.secs.map((s,k)=>`<div class="card sec ${k===curK()?'cur':''}"><span class="let dot">${esc(s.name)}</span><div><b>${s.bars} bar${s.bars>1?'s':''}</b>${tk===k?' · <b style="color:var(--ok)">playing on the TP-7</b>':''}<div class="sum">${secSum(s)}</div></div><span></span>
+  el.innerHTML=ses.secs.map((s,k)=>`<div class="card sec ${k===curK()?'cur':''}"><span class="let dot">${esc(s.name)}</span><div><b>${s.bars} bar${s.bars>1?'s':''}</b> · ${bpmTxt(bpmOf(k))} bpm${tk===k?' · <b style="color:var(--ok)">playing on the TP-7</b>':''}<div class="sum">${secSum(s)}</div></div><span></span>
     <div class="acts"><button type="button" class="btn sm pri" data-act="loopApp" data-k="${k}">Loop here</button><button type="button" class="btn sm" data-act="tapePlay" data-k="${k}">▶ TP-7 from here</button><button type="button" class="btn sm" data-act="tapeLoop" data-k="${k}">Loop on TP-7</button></div></div>`).join('')+
     `<div class="row"><button type="button" class="btn" data-act="tapeStop">■ Stop TP-7</button><button type="button" class="btn" data-act="printNow">Print kept layers now${toPrint().length?` (${toPrint().length})`:''}</button></div>
     <p class="note">Loop here loops the section in the app (as switches 3 and 4 do). The TP-7 buttons play its recording from the section's cue; a section without a cue yet plays from the cue before it and gets its cue on the way.</p>`; }
@@ -1158,9 +1215,13 @@ function renderSet(){ const el=$('#pSet'); if(!el) return; const s=S.synth, info
     <p class="note">While you play a synth layer you hear your guitar from the TP-7, plus the synth if this is on (late by the round trip and about 20 ms of tracking). Once you close it, the layer is worked out again from the whole take and plays in time from then on.</p></div>
   <div class="card"><h3>Mix</h3>${[['metro','Metronome'],['loop','Loops'],['pads','Pads'],['prev','Synth while you play']].map(([k,n])=>`<div class="row"><span class="lbl">${n}</span><input type="range" min="0" max="1" step="0.05" value="${S.lv[k]}" data-lv="${k}" aria-label="${n}"></div>`).join('')}
     <div class="row"><span class="lbl">Metronome</span><button type="button" class="btn sm" data-tog="metroOn" aria-pressed="${!!S.metroOn}">${S.metroOn?'On':'Off'}</button></div></div>
+  <div class="card"><h3>Looping</h3>
+    <div class="row"><span class="lbl">Loops in whole bars at the set tempo</span><button type="button" class="btn sm" data-tog="loopBars" aria-pressed="${!!S.loopBars}">${S.loopBars?'On':'Off'}</button></div>
+    <div class="row"><span class="lbl">Count-in before play</span><button type="button" class="btn sm" data-tog="countIn" aria-pressed="${!!S.countIn}">${S.countIn?'On':'Off'}</button></div>
+    <p class="note">Off (the default): a loop is exactly as long as the time between your two presses, and its section's tempo moves to the nearest tempo that makes it whole bars. On: the loop starts and ends on the nearest bar line at the tempo you tapped. Play starts at once unless the count-in is on.</p></div>
   <div class="card"><h3>Layers</h3><div class="row"><span class="lbl">Print kept layers when you stop</span><button type="button" class="btn sm" data-tog="printOnStop" aria-pressed="${!!S.printOnStop}">${S.printOnStop?'On':'Off'}</button></div>
     <div class="row"><span class="lbl">Keep every new layer without asking</span><button type="button" class="btn sm" data-tog="autoAccept" aria-pressed="${!!S.autoAccept}">${S.autoAccept?'On':'Off'}</button></div></div>
-  <div class="card"><h3>Footswitch</h3><p class="note">AirTurn in mode 2 (keyboard): 1 guitar layer (tap on, tap off; closes a first pass), 2 play/stop (in the first bar of a first pass it cancels it), 3 previous section, 4 next section (from the last one it records a new section after a count-in), 5 synth layer, 6 keep the newest layer, double tap 6 to drop it. With nothing to keep, four steady taps of 6 start a new session at that tempo.</p></div>
+  <div class="card"><h3>Footswitch</h3><p class="note">AirTurn in mode 2 (keyboard): 1 guitar layer (tap on, tap off; closes a first pass), 2 play/stop (in the first bar of a first pass it cancels it), 3 previous section, 4 next section (at the end of this time round; from the last one it records a new section), 5 synth layer, 6 keep the newest layer, double tap 6 to drop it. With nothing to keep, four steady taps of 6 start a new session at that tempo.</p></div>
   <div class="card"><h3>Tests and log</h3><div class="row"><button type="button" class="btn pri" data-act="diag">Diagnostics</button><button type="button" class="btn" data-act="copyLog">Copy log</button></div>
     <p class="note">Build ${APP_BUILD}.</p><div class="row"><button type="button" class="btn sm" data-act="endSes">End this session</button></div></div>`; }
 
@@ -1246,7 +1307,8 @@ async function stanceCheck(id,st){ S.tp.stance=st; const r=await tpPerform(); if
   const ag=await ask('Did you hear your guitar from the TP-7?',['yes','no']); if(ag<0) return null; dgLine(id,`  ${ag===0?'✓':'✗'} you hear your guitar: ${ag===0?'yes':'no'}`);
   banner('Listen, and do not play','Eight clicks from the app.'); const t0=ctx.currentTime; await clicksOnPair(0,8); await sleep(RT()*1000+100); banner('');
   let leak=0; const x=inSlice(t0+0.4+RT()-0.01,t0+0.4+4+RT()); if(x) for(const v of x) leak=Math.max(leak,Math.abs(v)); const qn=await peakOver(0.8);
-  dgLine(id,`  ${leak<Math.max(0.01,qn*3)?'✓':'✗'} the app's clicks in the guitar input: ${dB(leak)} (quiet ${dB(qn)})`);
+  const lk=leak<Math.max(0.01,qn*3); if(st==='normal'){ S.tp.bleed=lk?0.005:Math.min(0.2,leak); save(); }
+  dgLine(id,`  ${lk?'✓':'✗'} the app's clicks in the guitar input: ${dB(leak)} (quiet ${dB(qn)})${lk?'':'. The live synth now ignores this echo of itself; takes still carry the metronome this far down'}`);
   const aa=await ask('Did you hear eight clicks?',['yes','no']); if(aa<0) return null; dgLine(id,`  ${aa===0?'✓':'✗'} you hear the app: ${aa===0?'yes':'no'}`);
   return {app:lv>0.01,gtr:ag===0,heard:aa===0}; }
 async function t1(){ const id='t1'; if(!(await dgBasics(id))) return; await stopAll(true);
@@ -1294,7 +1356,8 @@ async function t2(){ const id='t2'; if(!(await dgBasics(id))) return; dgLine(id,
   lays[1].l.state='accepted'; await printAll(); const f2=E.lastFit; lays[2].l.state='accepted'; await printAll(); const f3=E.lastFit;
   // A starts 0.25 s in: its passes go by the start lag measured just before; the reports afterwards say how far off that was
   [f1,f2,f3].forEach((f,i)=>dgLine(id,!f?`✗ print pass ${i+1} did not run`:f.pred?`${f.err!=null&&Math.abs(f.err)<6?'✓':'✗'} print pass ${i+1} (section A, by the start lag): ${f.err==null?'not checked':`${(f.err>=0?'+':'')+f.err.toFixed(1)} ms off`} by its own reports (within ${f.afterWidth!=null?f.afterWidth.toFixed(1)+' ms':'?'})`:`· print pass ${i+1}: ${f.n} position reports, timing within ${f.width!=null?f.width.toFixed(1)+' ms':'? (the reports disagree)'}`));
-  dgLine(id,`· TP-7 start lag: ${S.tp.lag&&S.tp.lag.edit!=null?S.tp.lag.edit.toFixed(1)+' ms':'not measured'} (edit mode, from the start)`);
+  if([f1,f2,f3].some(f=>f&&f.pred)) dgLine(id,`· TP-7 start lag: ${S.tp.lag&&S.tp.lag.edit!=null?S.tp.lag.edit.toFixed(1)+' ms':'not measured'} (edit mode, from the start)`);
+  [f1,f2,f3].forEach((f,i)=>{ if(f&&f.late) dgLine(id,`· print pass ${i+1}: ${f.late} position report${f.late>1?'s':''} came a step late and ${f.late>1?'were':'was'} left out`); });
   dgLine(id,`· cues set: ${Object.entries(ses.cues).map(([n,p])=>`note ${n} at ${(+p).toFixed(2)} s`).join(', ')||'none'}; recording now ${ses.fileEnd.toFixed(2)} s`);
   if(DG.stop) return;
   // play it back from the start and listen (track 1 is not armed, so the USB return carries its playback)
@@ -1313,11 +1376,14 @@ async function t2(){ const id='t2'; if(!(await dgBasics(id))) return; dgLine(id,
   const g1=ctx.currentTime; await tapePlay(0,true); await sleep((L*3.4+1.5)*1000); await tapeStop(); const ts2=clicksIn(g1,ctx.currentTime-0.1);
   const cls=ts2.map(t=>({t,f:clickHz(t)})), b2=cls.filter(c=>c.f>1750).length; DG.dbg={cls,g1,ts,g0,fc:fit.c};
   dgLine(id,`${b2===0&&cls.length>=16?'✓':'✗'} TP-7 loop of A: ${cls.length} clicks heard, ${b2} of section B's (the loop held if none)`);
-  if(cls.length) dgLine(id,`· TP-7 playback began ${Math.round((cls[0].t-g1)*1000)} ms after the button (build 2: about 1.9 s); start after Play ${S.tp.lag&&S.tp.lag.play!=null?S.tp.lag.play.toFixed(1)+' ms':'?'}`);
+  if(cls.length) dgLine(id,`· TP-7 loop of A from the start of the recording: A's first click came back ${Math.round((cls[0].t-g1)*1000)} ms after the button (A starts 1.6 s in)`);
   // the same click one loop later: any later click of the same pitch about L later (build 1 counted clicks, and a click lost at the wrap broke the count)
   const iv=[]; cls.forEach((c,i)=>{ const n=cls.slice(i+1).find(x=>x.f===c.f&&Math.abs(x.t-c.t-L)<0.03); if(n) iv.push(n.t-c.t-L); });
   dgLine(id,iv.length?`${Math.abs(medOf(iv))<0.004?'✓':'✗'} TP-7 loop length: ${iv.length} repeats, the loop ${Math.abs(medOf(iv)*1000).toFixed(1)} ms ${medOf(iv)<0?'short':'long'} (loop out correction ${S.tp.loopAdj} ms)`:'✗ TP-7 loop length: no repeat measured');
   const per=cls.length?Math.round(cls.length/Math.max(1,(cls[cls.length-1].t-cls[0].t)/L)):0; dgLine(id,`· about ${per} of A's 8 clicks per time round heard${per<8?' (one lost at the wrap means the loop point cuts the first beat)':''}`);
+  // ▶ TP-7 from B: held cue note, no stop or edit toggle (B's first click is on beat 2)
+  if(!DG.stop&&ses.cues[1]!=null){ const g2=ctx.currentTime; await tapePlay(1,false); await sleep(2200); await tapeStop(); const c2=clicksIn(g2,ctx.currentTime-0.1).map(t=>({t,f:clickHz(t)})).find(c=>c.f>1750);
+    dgLine(id,c2?`· ▶ TP-7 from B (its cue, ${(ses.secs[1].s-ses.cues[1]).toFixed(1)} s before it): B's start came back ${Math.round((c2.t-g2-beatS())*1000)} ms after the button, including the input delay (build 2: about 1.9 s)`:'✗ ▶ TP-7 from B: none of B\'s clicks came back'); }
   await perfReady(); dgLine(id,'Done. The test session stays loaded; tap switch 6 four times for a real one.'); }
 
 // ------------------------------------------------------------------ test 3: a real loop, start to finish, with your footswitch
@@ -1330,8 +1396,9 @@ async function t3(){ const id='t3'; if(!(await dgBasics(id))) return; await stop
   const hm=await ask('Do you hear the metronome?',['yes','no']); dgLine(id,`${hm===0?'✓':'✗'} metronome heard: ${hm===0?'yes':'no'}`); if(hm<0) return;
   if(!(await stepWait('Switch 1, then play two bars of chords','Switch 1 again at the end of the second bar.',()=>E.st==='loop'&&S.ses.secs.length===1,90000))) return;
   const A0=S.ses.secs[0]; await waitFor(()=>E.bufs.get(A0.layers[0]&&A0.layers[0].id),3000); const b0=E.bufs.get(A0.layers[0].id); let pk=0; if(b0) for(const v of b0.getChannelData(0)) pk=Math.max(pk,Math.abs(v));
-  dgLine(id,`${pk>0.01?'✓':'✗'} section A: ${A0.bars} bar${A0.bars>1?'s':''}, your take peaks at ${dB(pk)}`);
+  dgLine(id,`${pk>0.01?'✓':'✗'} section A: ${A0.bars} bar${A0.bars>1?'s':''} in ${A0.L.toFixed(2)} s, so ${bpmTxt(bpmOf(0))} bpm (you tapped ${bpmTxt(TAP.bpm||S.ses.bpm)}); your take peaks at ${dB(pk)}`);
   await sleep(Math.max(0,A0.L*2*1000-1000)); const q1=await ask('How does the loop sound against the metronome?',['in time','a little late','a little early','off']); dgLine(id,`· the loop against the metronome: ${['in time','a little late','a little early','off'][q1]||'no answer'}`); if(q1<0) return;
+  const q0=await ask('When you closed the loop, did it start again the moment you pressed?',['at once','a little late','late']); dgLine(id,`· the loop came back ${['at once','a little late','late'][q0]||'(no answer)'} after the press`); if(q0<0) return;
   if(!(await stepWait('Switch 6 keeps it','',()=>A0.layers[0].state==='accepted',30000))) return; dgLine(id,'✓ kept');
   const n0=A0.layers.length; if(!(await stepWait('Switch 5, play single notes for one time round','Switch 5 again to stop. The synth version follows a moment later.',()=>A0.layers.length>n0&&!E.rec,90000))) return;
   const sl=A0.layers[A0.layers.length-1], t0=performance.now(); await waitFor(()=>DG.stop||(sl.notes!=null&&!sl._rendering),20000,50);
@@ -1357,7 +1424,7 @@ function diagReport(){ const L=[`Tinebox Loop diagnostics, ${new Date().toLocale
 (function start(){
   log('app',`page loaded ${new Date().toLocaleString()}, build ${APP_BUILD}`);
   if(S.ses){ S.ses.secs.forEach(s=>s.layers.forEach(l=>{ delete l._busy; delete l._rendering; })); E.st=S.ses.secs.length?'stopped':'idle';
-    say(S.ses.secs.length?`Session at ${S.ses.bpm} bpm, ${S.ses.secs.length} section${S.ses.secs.length>1?'s':''}.`:'Tinebox Loop',S.ses.secs.length?'Connect the TP-7 (Settings), then switch 2 plays. '+pendTxt():'Connect the TP-7 (Settings), then tap switch 6 four times for a session.'); }
+    say(S.ses.secs.length?`Session at ${bpmTxt(S.ses.bpm)} bpm, ${S.ses.secs.length} section${S.ses.secs.length>1?'s':''}.`:'Tinebox Loop',S.ses.secs.length?'Connect the TP-7 (Settings), then switch 2 plays. '+pendTxt():'Connect the TP-7 (Settings), then tap switch 6 four times for a session.'); }
   else say('Tinebox Loop','Connect the TP-7 (Settings), then tap switch 6 four times for a session.');
   showTab('Loop');
   // MIDI browsers grant access without a prompt: connect at once (a tap is still needed for audio)
