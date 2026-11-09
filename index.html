@@ -15,11 +15,11 @@
 :root{
   --body:#E2E4E0; --body-2:#D3D6D1; --panel:#EDEEEA; --line:#C6CAC3; --key:#FFFFFF; --key-edge:#B5BAB2; --key-down:#E9EEF8;
   --ink:#1A1E21; --ink-2:#5E666B; --screen:#000; --scr-ink:#DDF1FF; --scr-dim:#7B95A3;
-  --rec:#D5362B; --go:#2E66D6; --ok:#2F8A5E; --warn:#B9791A; --syn:#7A5BD0; --drm:#C9602E; --gtr:#2E66D6; --focus:#2E66D6;
+  --rec:#D5362B; --go:#2E66D6; --ok:#2F8A5E; --warn:#B9791A; --syn:#C9503F; --drm:#A87A0C; --gtr:#7458CF; --focus:#2E66D6;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --body:#1C1F21; --body-2:#141719; --panel:#25292B; --line:#3A4043; --key:#32373A; --key-edge:#0E1012; --key-down:#2A3240; --ink:#E8EBE7; --ink-2:#A0A7A3; --scr-dim:#6F8A99; --go:#5B8CF0; --gtr:#5B8CF0; --syn:#9A80EA; color-scheme:dark; }
+  :root{ --body:#1C1F21; --body-2:#141719; --panel:#25292B; --line:#3A4043; --key:#32373A; --key-edge:#0E1012; --key-down:#2A3240; --ink:#E8EBE7; --ink-2:#A0A7A3; --scr-dim:#6F8A99; --go:#5B8CF0; --gtr:#8E74E2; --syn:#D9604F; --drm:#B88A14; color-scheme:dark; }
 }
 *,*::before,*::after{box-sizing:border-box}
 html{height:100%}
@@ -33,11 +33,12 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .panel{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:6px 0 12px;-webkit-overflow-scrolling:touch}
 .dot{font-family:'Doto',ui-monospace,monospace;font-weight:900}
 
-/* the screen: state, section, position */
+/* the header: session tempo, position, what is happening */
 .screen{flex:none;background:var(--screen);color:var(--scr-ink);border-radius:14px;padding:10px 14px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px}
-#scState{font-size:22px;font-weight:700;line-height:1.15;min-height:26px}
-#scSmall{grid-column:1/3;font-size:14px;color:var(--scr-dim);min-height:18px}
-#scPos{font-size:30px;line-height:1;align-self:center;text-align:right;white-space:nowrap}
+#scTitle{font-size:24px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#scState{grid-column:1/3;font-size:16px;font-weight:600;line-height:1.2;min-height:19px}
+#scSmall{grid-column:1/3;font-size:14px;color:var(--scr-dim);min-height:17px}
+#scPos{font-size:26px;line-height:1;align-self:center;text-align:right;white-space:nowrap}
 #scPos.rec{color:#ff6a5e}
 .ring{grid-column:1/3;height:6px;border-radius:3px;background:#1A2025;overflow:hidden;margin-top:6px;position:relative}
 .ring i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--scr-ink);opacity:.8}
@@ -47,11 +48,46 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .chip.bad{color:#ff8a7e;border-color:#ff8a7e}
 
 /* tabs */
-.tabs{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 0 calc(env(safe-area-inset-bottom,0px) + 6px);border-top:1px solid var(--line);background:var(--body)}
-.tabs button{border:0;background:transparent;border-radius:10px;padding:8px 2px;font-size:15px;font-weight:600;color:var(--ink-2)}
+.tabs{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:6px 0 calc(env(safe-area-inset-bottom,0px) + 6px);border-top:1px solid var(--line);background:var(--body)}
+.tabs button{border:0;background:transparent;border-radius:10px;padding:9px 2px;font-size:17px;font-weight:600;color:var(--ink-2)}
 .tabs button[aria-selected="true"]{background:var(--panel);color:var(--ink)}
 
-/* switches: the footswitch mirrored on screen */
+/* Arrange: the timeline (sections across, tracks down) and the transport */
+#pArr{display:flex;flex-direction:column;overflow:hidden;padding-bottom:8px}
+.tl{flex:1;min-height:220px;position:relative;margin-top:8px;border-radius:12px;background:#0F1214;overflow:hidden}
+.tlsc{position:absolute;inset:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x}
+.tlsc canvas{display:block}
+.tlempty{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:18px;color:#C9D2D6;font-size:16px;line-height:1.35;background:#0F1214}
+.tlempty b{color:#F2C14E}
+.tlempty .btn{align-self:flex-start}
+.tr{flex:none;display:grid;grid-template-columns:auto 1fr auto auto auto 1fr auto;align-items:center;gap:8px;margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
+.tbtn{width:48px;height:48px;border-radius:12px;border:1px solid var(--key-edge);background:var(--key);display:flex;align-items:center;justify-content:center;padding:0}
+.tbtn.big{width:60px;height:56px;border-radius:14px}
+.tbtn svg{width:24px;height:24px;fill:currentColor}
+.tbtn.big svg{width:30px;height:30px}
+.tbtn.on{background:var(--go);border-color:var(--go);color:#fff}
+.tbtn[aria-pressed="true"]{background:var(--ink);color:var(--body);border-color:var(--ink)}
+.tbtn:disabled{opacity:.35}
+.seg{display:flex;border:1px solid var(--key-edge);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--key);padding:7px 10px;font-weight:700;font-size:14px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--body)}
+.sp{min-width:0}
+/* the section sheet */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:44;max-height:78vh;overflow-y:auto;background:var(--panel);border-top:1px solid var(--line);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.3);padding:12px 14px calc(env(safe-area-inset-bottom,0px) + 14px)}
+.sheet .wrap{max-width:640px;margin:0 auto}
+.sheet .hd{display:flex;align-items:center;gap:8px}
+.sheet .hd h3{flex:1;margin:0;font-size:19px}
+.tgrp{border-top:2px solid var(--line);margin-top:8px;padding-top:4px}
+.tgrp .layer{border-top:0}
+.row.lvl{margin-top:-2px}
+.gv{min-width:58px;text-align:right;font-variant-numeric:tabular-nums;font-size:14px;color:var(--ink-2)}
+/* Sounds */
+.snd{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.snd button{border:1px solid var(--key-edge);background:var(--key);border-radius:10px;padding:10px 4px;font-weight:700;font-size:15px}
+.snd button[aria-pressed="true"]{background:var(--syn);border-color:var(--syn);color:#fff}
+.snd button.raw[aria-pressed="true"]{background:var(--gtr);border-color:var(--gtr)}
+
+/* switches: the footswitch mirrored on screen (no longer shown: build 5) */
 .sw{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
 .sw button{min-height:68px;border-radius:14px;border:1px solid var(--key-edge);background:var(--key);box-shadow:0 2px 0 var(--key-edge);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px}
 .sw button:active{transform:translateY(1px);box-shadow:0 1px 0 var(--key-edge);background:var(--key-down)}
@@ -87,7 +123,7 @@ input[type=range]{flex:1;min-width:120px}
 
 /* pads */
 .pads{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
-.pad{aspect-ratio:1/0.85;border-radius:16px;border:1px solid var(--key-edge);background:var(--key);box-shadow:0 3px 0 var(--key-edge);font-size:17px;font-weight:700;touch-action:none}
+.pad{aspect-ratio:1/0.62;border-radius:16px;border:1px solid var(--key-edge);background:var(--key);box-shadow:0 3px 0 var(--key-edge);font-size:17px;font-weight:700;touch-action:none}
 .pad.hit{background:var(--key-down);transform:translateY(2px);box-shadow:0 1px 0 var(--key-edge)}
 
 /* sections */
@@ -120,24 +156,24 @@ textarea.copy{width:100%;height:120px;font-size:12px}
 <body>
 <div id="app">
   <div class="screen" aria-live="polite">
-    <div id="scState">Tinebox Loop</div>
+    <div id="scTitle">Tinebox Loop</div>
     <div id="scPos" class="dot">–</div>
+    <div id="scState"></div>
     <div id="scSmall">Connect the TP-7 (Settings), then tap switch 6 four times for a session.</div>
     <div class="ring" aria-hidden="true"><i id="scRing"></i></div>
     <div class="chips" id="scChips"></div>
   </div>
-  <main class="panel" id="pLoop"></main>
-  <main class="panel" id="pPads" hidden></main>
-  <main class="panel" id="pSecs" hidden></main>
+  <main class="panel" id="pArr"></main>
+  <main class="panel" id="pSnd" hidden></main>
   <main class="panel" id="pSet" hidden></main>
   <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="Loop" aria-selected="true">Loop</button>
-    <button role="tab" data-tab="Pads" aria-selected="false">Pads</button>
-    <button role="tab" data-tab="Secs" aria-selected="false">Sections</button>
+    <button role="tab" data-tab="Arr" aria-selected="true">Arrange</button>
+    <button role="tab" data-tab="Snd" aria-selected="false">Sounds</button>
     <button role="tab" data-tab="Set" aria-selected="false">Settings</button>
   </nav>
 </div>
 <div id="toast" role="status"></div>
+<div class="sheet" id="sheet" hidden role="dialog" aria-label="Section"><div class="wrap" id="sheetIn"></div></div>
 <script>
 // Guitar to synth DSP for Tinebox Loop. One self-contained factory, so the same code runs in the audio worklet (live preview),
 // in a worker (the exact version printed to tape) and in Node (offline tests). No DOM, no Web Audio.
@@ -418,7 +454,7 @@ return {fft,Decim,Tracker,onsets,transcribe,keyOf,snapToKey,PRESETS,Voice,render
    While you play, the TP-7 stands still and armed: the guitar then reaches the app over USB (8 Oct) and nothing records.
    Build 2 (8 Nov, your report of build 1): in edit mode, armed on line 1, you heard your guitar and the app heard it, but you did not
    hear the app. The stance is now normal mode, armed (record sources line 1, USB 1, USB 2), unless the diagnostics find otherwise. */
-const APP_BUILD='4 (8 Nov 2026)';
+const APP_BUILD='6 (9 Nov 2026)';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -432,7 +468,7 @@ const G=GDSP();
 // ------------------------------------------------------------------ settings and the session (audio itself lives in IndexedDB)
 const LS='tinebox-loop-1';
 function defaults(){ return {v:1,metroOn:true,lv:{metro:0.8,pads:0.9,loop:1,prev:0.8},kit:'studio',padFix:null,quant:0,
-  synth:{preset:'pad',oct:0,preview:true,snap:false,glide:false,level:0.8},printOnStop:true,autoAccept:false,
+  synth:{preset:'pad',oct:0,preview:true,snap:false,glide:false,level:0.8},printOnStop:true,autoAccept:false,src:'gtr',sndPrev:true,
   // marker delay 79 ms and loop out −19 ms from Tinebox (5 Oct, 31 Oct); MIDI offset per audio setup (14 Oct: 10 ms at 48 kHz/1 ch, 4 ms at 96 kHz/6 ch)
   tp:{mDelay:79,loopAdj:-19,offsets:{'48 kHz, 1 ch':10,'96 kHz, 6 ch':4},rt:{},printFix:0,stance:'normal',lag:{}},diag:{},ses:null}; }
 let S=defaults();
@@ -546,8 +582,8 @@ async function openInput(){
   IN.src.connect(IN.node); IN.node.connect(A.prev);
   const st=tr&&tr.getSettings?tr.getSettings():{}; IN.nch=st.channelCount||2;
   log('app',`audio input: ${IN.kind}, ${IN.nch} channel${IN.nch>1?'s':''}`); return true; }
-// the live synth while a synth layer records (the delay is the round trip plus about 20 ms of tracking)
-function preview(on){ const s=S.synth; if(!IN.node) return; on=on&&s.preview;
+// the live synth: while a synth layer records (if set), and on the Sounds tab (the delay is the round trip plus about 30 ms of tracking)
+function preview(on,force){ const s=S.synth; if(!IN.node) return; on=on&&(force||s.preview);
   const bleed=S.tp.bleed!=null?S.tp.bleed:0.02, dly=RT();
   if(IN.kind==='worklet') IN.node.port.postMessage({preview:on,preset:s.preset,oct:s.oct,gain:1,bleed,dly});
   else { IN.pv=on; if(on){ if(!IN.live) IN.live=new G.Live(ctx.sampleRate,{preset:s.preset,oct:s.oct}); else IN.live.set(s.preset,s.oct); IN.live.bleed=bleed; IN.live.dly=dly; } } }
@@ -749,7 +785,9 @@ const inCount=t=>{ const c=E.ci; return !!(c&&t>=c.a-0.01&&t<c.b-0.01); };
 function mkBuf(y,N){ const b=ctx.createBuffer(1,N,ctx.sampleRate), d=b.getChannelData(0); d.set(y.length>N?y.subarray(0,N):y); return b; }
 function phase(t,z,L){ return ((t-z)%L+L)%L; }
 function srcAdd(P,id,s){ const a=P.srcs.get(id)||[]; a.push(s); P.srcs.set(id,a); }
-function gainOf(l){ return l.muted?0:(l.gain==null?1:l.gain); }
+// a layer's level: its own slider times its track's (build 5: a level per layer and per track, for balancing; prints use the same)
+const trkGain=t=>S.ses&&S.ses.tg&&S.ses.tg[t]!=null?S.ses.tg[t]:1;
+function gainOf(l){ return l.muted?0:(l.gain==null?1:l.gain)*trkGain(l.type); }
 // a looping source for layer l in loop P from time t (at the right phase)
 function layerPlay(P,l,t){ const buf=E.bufs.get(l.id); if(!buf||!P) return; t=Math.max(t,ctx.currentTime+0.02);
   const src=ctx.createBufferSource(), g=ctx.createGain(); src.buffer=buf; src.loop=true; src.loopStart=0; src.loopEnd=buf.duration; g.gain.value=gainOf(l); src.connect(g); g.connect(A.loop);
@@ -764,7 +802,8 @@ function loopEnd(P,t){ if(!P) return; [...P.srcs.keys()].forEach(id=>layerSilenc
 function layerGain(l){ const P=E.play; if(P&&P.srcs.get(l.id)) P.srcs.get(l.id).forEach(s=>{ try{ s.g.gain.setTargetAtTime(gainOf(l),ctx.currentTime,0.01); }catch(e){} }); }
 async function ensureBufs(k){ const sec=SEC(k); if(!sec) return; for(const l of sec.layers){ if(E.bufs.get(l.id)) continue; const d=await IDB.get(S.ses.id+':'+l.id);
     if(d&&d.y){ const b=ctx.createBuffer(1,d.y.length,d.sr||ctx.sampleRate); b.getChannelData(0).set(d.y); E.bufs.set(l.id,b); } else log('err',`layer ${l.id}: no audio stored`); } }
-function storeLayer(l,y,sr){ IDB.put(S.ses.id+':'+l.id,{y,sr}); }
+function storeLayer(l,y,sr){ IDB.put(S.ses.id+':'+l.id,{y,sr}); l.env=envOf(y,160); }
+function envOf(y,n){ const out=new Array(n).fill(0), m=y.length/n; for(let j=0;j<n;j++){ let p=0; for(let i=Math.floor(j*m),e=Math.floor((j+1)*m);i<e;i++){ const a=y[i]<0?-y[i]:y[i]; if(a>p) p=a; } out[j]=Math.round(p*1000)/1000; } return out; }
 
 // ------------------------------------------------------------------ a session: a new TP-7 recording, the performance stance, the round trip
 async function prepSession(bpm,tapZ){ const e=tpProblem(); if(e){ say(e); return; } initAudio(); if(!ctx) return;
@@ -794,7 +833,7 @@ async function prepSession(bpm,tapZ){ const e=tpProblem(); if(e){ say(e); return
   const w=[]; if(!f) w.push('The TP-7 sent no file notice.'); else if(f.b9<3) w.push(`The new recording has ${f.b9} track${f.b9>1?'s':''}: set the TP-7's record sources to line 1, USB 1 and USB 2 once.`);
   if(rt.rt==null) w.push(`Round trip not measured (${rt.why}); takes may sit off the beat.`);
   clkStart(tapZ!=null?alignBar(tapZ):clkFirst()); log('st',`session ready: ${S.ses.bpm} bpm, ${fileTxt(f)}, round trip ${msTxt(S.ses.rt)}`);
-  say(`Ready at ${S.ses.bpm} bpm.`,`${w.join(' ')} Switch 1 records guitar, switch 5 synth. Round trip ${msTxt(S.ses.rt)}.`); renderAll(); }
+  say(`Ready at ${S.ses.bpm} bpm.`,`${w.join(' ')} Switch 1 records a loop: guitar, pads or both. Round trip ${msTxt(S.ses.rt)}.`); renderAll(); }
 const clkFirst=()=>ctx.currentTime+0.1;
 // clicks out through USB 1, back through the TP-7's track 1 monitor: graph time out → graph time in
 async function measureRT(){ const n=5, base=ctx.currentTime+0.2, step=0.3, sr=ctx.sampleRate; const was=S.metroOn; S.metroOn=false; const out=[];
@@ -809,60 +848,72 @@ async function measureRT(){ const n=5, base=ctx.currentTime+0.2, step=0.3, sr=ct
 // ------------------------------------------------------------------ the first pass of a section: from your press to your press
 // Build 4: the loop is exactly as long as the time between your two presses; the section's tempo moves to the nearest tempo that makes
 // it whole bars (a 2-bar loop closed 0.1 s late at 88 bpm: 86.5 bpm). Settings, "Loops in whole bars" gives build 3's behaviour.
-function firstStart(type,S0,via){ E.rec={type,first:true,S0,via:via||null,hits:type==='drm'?[]:null}; E.st='first'; E.play=null; if(type==='syn') preview(true);
-  E.capT=at(S0+CAP*barS()-0.3,()=>{ if(E.rec&&E.rec.first&&E.rec.S0===S0) firstClose(S0+CAP*barS(),null); });
-  say(type==='drm'?'Recording drums: play the pads. Rec again closes the loop.':via==='next'?'Recording a new section. Switch 1 (guitar) or 5 (synth) closes it; Rec on the Pads tab turns it into drums.':type==='syn'?'Recording a synth loop. Switch 5 again closes it.':'Recording. Switch 1 again closes the loop.',''); renderAll(); }
-// Rec on the Pads tab during a guitar first pass (one that Next started, say) makes it a drum pass from its start
-function firstToDrums(){ const r=E.rec; if(!r||!r.first||r.type==='drm') return; preview(false); r.type='drm'; r.hits=[]; r.via=null; say('This first pass is drums now: play the pads. Rec again closes it.',''); renderAll(); }
-async function firstClose(h,closer,stopAfter){ const r=E.rec; if(!r||!r.first) return; const bar=barS(), base=bpmNow(), raw=h-r.S0;
+// Build 5 (9 Nov: "Switch 1 should also be more generally accepting of a loop, regardless of if this is a guitar source or app source"):
+// a pass records everything at once, your guitar from the TP-7 and the pads you tap. When it closes it becomes a drum layer if you tapped
+// pads, and a guitar layer (raw, or the synth chosen in Sounds; switch 5 swaps them) if you played the guitar. With no pads, always the
+// guitar. "Played" means a peak above the app's own echo in the input (8 Nov: about -38 dB under what it plays).
+const gtrType=()=>S.src==='syn'?'syn':'gtr';
+const srcName=()=>S.src==='syn'?`${(G.PRESETS[S.synth.preset]||{name:'synth'}).name} synth`:'raw guitar';
+// the live synth runs on the Sounds tab (strum to hear the sound) and, if set, while a pass records with the synth chosen
+function prevSync(){ const busy=['printing','tape','prep'].includes(E.st), want=S.src==='syn'&&!!IN.node&&!busy&&((E.tab==='Snd'&&S.sndPrev!==false)||(!!E.rec&&!!S.synth.preview)), key=S.synth.preset+':'+S.synth.oct;
+  if(want!==!!E.pv||(want&&key!==E.pvKey)){ E.pv=want; E.pvKey=key; preview(want,true); } }
+const gtrFloor=()=>Math.max(0.03,4*(S.tp.bleed!=null?S.tp.bleed:0.005));
+const hitsC=h=>h.map(x=>[Math.round(x.ph*1000)/1000,x.i,Math.round((x.v||0.9)*100)/100]);
+function firstStart(S0,via){ E.rec={first:true,S0,via:via||null,hits:[]}; E.st='first'; E.play=null; prevSync();
+  E.capT=at(S0+CAP*barS()-0.3,()=>{ if(E.rec&&E.rec.first&&E.rec.S0===S0) firstClose(S0+CAP*barS()); });
+  say(via==='next'?'Recording a new section: guitar, pads or both. Switch 1 closes it.':'Recording: guitar, pads or both. Switch 1 again closes the loop.',`Your guitar sounds as ${srcName()} (switch 5 swaps).`); renderAll(); }
+async function firstClose(h,_c,stopAfter){ const r=E.rec; if(!r||!r.first) return; const bar=barS(), base=bpmNow(), raw=h-r.S0;
   if(raw<0.5*bar&&!stopAfter){ say('Too soon to close: tap again at the end of your loop.'); return; }
-  clearTimeout(E.capT); const free=!S.loopBars, n=clamp(Math.round(raw/bar),1,CAP), L=free?Math.max(raw,0.25):n*bar, E1=r.S0+L, bpm=free?240*n/L:base, type=r.via==='next'&&closer?closer:r.type;
-  E.rec=null; preview(false);
+  clearTimeout(E.capT); const free=!S.loopBars, n=clamp(Math.round(raw/bar),1,CAP), L=free?Math.max(raw,0.25):n*bar, E1=r.S0+L, bpm=free?240*n/L:base;
+  E.rec=null; prevSync();
+  // what came in so far (all but the last round trip): plays at once, and tells whether the guitar was played
+  const sr=ctx.sampleRate, N=Math.round(L*sr), availH=IN.w/IN.sr-RT()-0.005, a=Math.min(E1,availH), x0=a>r.S0+0.05?takeSlice(r.S0,a):null;
+  const hits=r.hits||[], gpk=x0?G.peakOf(x0):0, withG=!hits.length||gpk>gtrFloor(), gt=gtrType(), pass=uid();
   const ses=S.ses, k=ses.secs.length, s=k?ses.secs[k-1].s+ses.secs[k-1].L:TAPE0;
-  const sec={id:uid(),name:LETTERS[k%26]+(k>=26?Math.floor(k/26)+1:''),bars:n,L,s,bpm,layers:[]}, l=newLayer(type); sec.layers.push(l); ses.secs.push(sec); ses.cur=k; if(k===0) ses.bpm=bpm; save();
-  const moved=Math.abs(bpm-base)>=0.05, tTxt=moved?` Tempo ${bpmTxt(bpm)} bpm (was ${bpmTxt(base)}).`:'';
-  log('st',`section ${sec.name}: ${n} bar${n>1?'s':''}, ${L.toFixed(3)} s, ${bpmTxt(bpm)} bpm (was ${bpmTxt(base)}), first pass ${TNAME[type]}`);
-  let P=null; if(!stopAfter){ P=E.play={k,z:E1,L,srcs:new Map()}; E.st='loop'; clkStart(E1,60/bpm); say(`Section ${sec.name}: ${n} bar${n>1?'s':''}, looping.${tTxt}`,pendTxt()); }
+  const sec={id:uid(),name:LETTERS[k%26]+(k>=26?Math.floor(k/26)+1:''),bars:n,L,s,bpm,layers:[]}, lg=withG?newLayer(gt,pass):null, ld=hits.length?newLayer('drm',pass):null;
+  if(lg) sec.layers.push(lg); if(ld) sec.layers.push(ld); ses.secs.push(sec); ses.cur=k; if(k===0) ses.bpm=bpm; save();
+  const moved=Math.abs(bpm-base)>=0.05, tTxt=moved?` Tempo ${bpmTxt(bpm)} bpm (was ${bpmTxt(base)}).`:'', what=[lg&&TNAME[lg.type].toLowerCase(),ld&&'drums'].filter(Boolean).join(' and ');
+  log('st',`section ${sec.name}: ${n} bar${n>1?'s':''}, ${L.toFixed(3)} s, ${bpmTxt(bpm)} bpm (was ${bpmTxt(base)}), first pass: ${what} (${hits.length} hits, guitar peak ${dB(gpk)})`);
+  let P=null; if(!stopAfter){ P=E.play={k,z:E1,L,srcs:new Map()}; E.st='loop'; clkStart(E1,60/bpm); say(`Section ${sec.name}: ${n} bar${n>1?'s':''} of ${what}, looping.${tTxt}`,pendTxt()); }
   else if(moved) say(null,tTxt.trim());
-  renderAll();
-  if(type==='drm'){ // drums: the hits from your press on (a hit up to 50 ms early counts as on it), snapped (if set) to this section's tempo
-    const q=S.quant?240/bpm/S.quant*4:0, hits=r.hits.map(x=>{ let ph=Math.max(0,x.t-r.S0); if(q) ph=(Math.round(ph/q)*q)%L; return {ph,i:x.i,v:x.v}; }).filter(x=>x.ph<L&&x.ph>=0), y=await renderDrums(hits,L), sr=ctx.sampleRate;
-    E.bufs.set(l.id,mkBuf(y,Math.round(L*sr))); storeLayer(l,y,sr); if(P&&E.play===P) layerPlay(P,l,E1); log('st',`drum first pass: ${hits.length} hits`);
-    if(stopAfter) say(`Section ${sec.name}: ${n} bar${n>1?'s':''}. Stopped.${tTxt}`,pendTxt()); renderAll(); return; }
-  // round 1 plays what is in at once, the rest of round 1 once it is in; from round 2 one looping source
-  const sr=ctx.sampleRate, N=Math.round(L*sr), availH=IN.w/IN.sr-RT()-0.005, a=Math.min(E1,availH);
-  if(P&&a>r.S0+0.05){ const x=takeSlice(r.S0,a); if(x){ fadeEdge(x,sr,0.0015,0); const b=mkBuf(x,N); layerOnce(P,l.id,b,0,a-r.S0,E1); } }
-  await sleepTo(takeReadyAt(E1)); let x=takeSlice(r.S0,E1); if(!x){ log('err','the first pass did not reach the app'); x=new Float32Array(N); }
-  fadeEdge(x,sr,0.0015,0.0015); const y=new Float32Array(N); y.set(x.subarray(0,N)); const buf=mkBuf(y,N); E.bufs.set(l.id,buf);
-  if(type==='syn') E.raws.set(l.id,{x:y,off:0,N}); storeLayer(l,y,sr); if(type==='syn') IDB.put(S.ses.id+':'+l.id+':raw',{x:y,off:0,N,sr});
-  if(P&&E.play===P){ if(a<E1) layerOnce(P,l.id,buf,Math.max(0,a-r.S0),L,E1); layerPlay(P,l,E1+L); }
-  if(type==='syn') synthLayer(l,k);
-  if(stopAfter) say(`Section ${sec.name}: ${n} bar${n>1?'s':''}. Stopped.${tTxt}`,pendTxt()); }
+  renderAll(); const jobs=[];
+  if(ld){ // the hits from your press on (up to 50 ms early counts as on it), snapped (if set) to this section's tempo
+    const q=S.quant?240/bpm/S.quant*4:0, dh=hits.map(x=>{ let ph=Math.max(0,x.t-r.S0); if(q) ph=(Math.round(ph/q)*q)%L; return {ph,i:x.i,v:x.v}; }).filter(x=>x.ph<L&&x.ph>=0);
+    ld.hits=hitsC(dh); jobs.push(renderDrums(dh,L).then(y=>{ E.bufs.set(ld.id,mkBuf(y,N)); storeLayer(ld,y,sr); if(P&&E.play===P) layerPlay(P,ld,E1); renderAll(); })); }
+  if(lg) jobs.push((async()=>{ // round 1 plays what is in at once, the rest of round 1 once it is in; from round 2 one looping source
+    if(P&&x0){ const x=x0.slice(); fadeEdge(x,sr,0.0015,0); layerOnce(P,lg.id,mkBuf(x,N),0,a-r.S0,E1); }
+    await sleepTo(takeReadyAt(E1)); let x=takeSlice(r.S0,E1); if(!x){ log('err','the first pass did not reach the app'); x=new Float32Array(N); }
+    fadeEdge(x,sr,0.0015,0.0015); const y=new Float32Array(N); y.set(x.subarray(0,N)); const buf=mkBuf(y,N); E.bufs.set(lg.id,buf);
+    if(gt==='syn'){ E.raws.set(lg.id,{x:y,off:0,N}); IDB.put(S.ses.id+':'+lg.id+':raw',{x:y,off:0,N,sr}); } storeLayer(lg,y,sr);
+    if(P&&E.play===P){ if(a<E1) layerOnce(P,lg.id,buf,Math.max(0,a-r.S0),L,E1); layerPlay(P,lg,E1+L); }
+    if(gt==='syn') synthLayer(lg,k); renderAll(); })());
+  await Promise.all(jobs); save();
+  if(stopAfter) say(`Section ${sec.name}: ${n} bar${n>1?'s':''} of ${what}. Stopped.${tTxt}`,pendTxt()); }
 function fadeEdge(x,sr,a,b){ const na=Math.min(x.length,Math.round(a*sr)), nb=Math.min(x.length,Math.round(b*sr)); for(let i=0;i<na;i++) x[i]*=i/na; for(let i=0;i<nb;i++) x[x.length-1-i]*=i/nb; }
-function newLayer(type){ return {id:uid(),type,state:S.autoAccept?'accepted':'pending',printed:false,gain:type==='syn'?S.synth.level:1,muted:false,preset:type==='syn'?S.synth.preset:null,oct:type==='syn'?S.synth.oct:0,glide:!!S.synth.glide,snap:!!S.synth.snap,created:Date.now()}; }
+function newLayer(type,pass){ return {id:uid(),type,pass:pass||null,state:S.autoAccept?'accepted':'pending',printed:false,gain:type==='syn'?S.synth.level:1,muted:false,preset:type==='syn'?S.synth.preset:null,oct:type==='syn'?S.synth.oct:0,glide:!!S.synth.glide,snap:!!S.synth.snap,created:Date.now()}; }
 // switch 2 in the first bar of a first pass: a false start, nothing kept
-function firstCancel(){ E.cancelled=true; clearTimeout(E.capT); E.rec=null; preview(false); E.st=S.ses.secs.length?'stopped':'ready'; if(E.st==='stopped') clkStop(); say('Cancelled: nothing kept.',''); renderAll(); }
+function firstCancel(){ E.cancelled=true; clearTimeout(E.capT); E.rec=null; prevSync(); E.st=S.ses.secs.length?'stopped':'ready'; if(E.st==='stopped') clkStop(); say('Cancelled: nothing kept.',''); renderAll(); }
 
 // ------------------------------------------------------------------ layers while a section loops: tap on, tap off
-function layerStart(type,h){ const P=E.play; if(!P) return; E.rec={type,first:false,h0:h,k:P.k,z:P.z,L:P.L,hits:type==='drm'?[]:null};
-  if(type==='syn') preview(true); say(type==='drm'?'Recording drums: play the pads. Rec again stops.':type==='syn'?'Recording a synth layer… switch 5 again stops it.':'Recording a guitar layer… switch 1 again stops it.',''); renderAll(); }
-async function layerStop(h,quiet){ const r=E.rec; if(!r||r.first) return; E.rec=null; preview(false); const sec=SEC(r.k), sr=ctx.sampleRate, N=Math.round(r.L*sr), l=newLayer(r.type);
-  if(r.type==='drm'&&!r.hits.length){ if(!quiet) say('No hits: nothing kept.'); renderAll(); return; }
-  if(h-r.h0<0.15&&r.type!=='drm'){ if(!quiet) say('Too short: nothing kept.'); renderAll(); return; }
-  l._busy=true; sec.layers.push(l); save(); renderAll(); log('st',`${TNAME[r.type]} layer on ${sec.name}: ${(h-r.h0).toFixed(2)} s`);
-  let y;
-  if(r.type==='drm') y=await renderDrums(r.hits,r.L);
-  else { await sleepTo(takeReadyAt(h)); const pre=0.03, x=takeSlice(r.h0-pre,h); if(!x){ l._busy=false; sec.layers.splice(sec.layers.indexOf(l),1); say('The take did not reach the app: nothing kept.'); renderAll(); return; }
-    fadeEdge(x,sr,pre,0.008); const off=Math.round(phase(r.h0-pre,r.z,r.L)*sr); y=G.fold(x,N,off); if(r.type==='syn'){ E.raws.set(l.id,{x,off,N}); IDB.put(S.ses.id+':'+l.id+':raw',{x,off,N,sr}); } }
-  l._busy=false; E.bufs.set(l.id,mkBuf(y,N)); storeLayer(l,y,sr);
-  if(E.play&&E.play.k===r.k) layerPlay(E.play,l,ctx.currentTime+0.02);
-  if(r.type==='syn') synthLayer(l,r.k);
-  if(!quiet) say(`${TNAME[r.type]} layer added: switch 6 keeps it, double-tap 6 drops it.`,pendTxt()); renderAll(); }
+function layerStart(h){ const P=E.play; if(!P) return; E.rec={first:false,h0:h,k:P.k,z:P.z,L:P.L,hits:[]}; prevSync();
+  say('Recording a layer: guitar, pads or both. Switch 1 again stops it.',`Your guitar sounds as ${srcName()} (switch 5 swaps).`); renderAll(); }
+async function layerStop(h,quiet){ const r=E.rec; if(!r||r.first) return; E.rec=null; prevSync(); const sec=SEC(r.k), sr=ctx.sampleRate, N=Math.round(r.L*sr), hits=r.hits||[], gt=gtrType(), pass=uid();
+  if(h-r.h0<0.15&&!hits.length){ if(!quiet) say('Too short: nothing kept.'); renderAll(); return; }
+  let ld=null; if(hits.length){ ld=newLayer('drm',pass); ld._busy=true; ld.hits=hitsC(hits); sec.layers.push(ld); save(); }
+  renderAll(); const jobs=[];
+  if(ld) jobs.push(renderDrums(hits,r.L).then(y=>{ ld._busy=false; E.bufs.set(ld.id,mkBuf(y,N)); storeLayer(ld,y,sr); if(E.play&&E.play.k===r.k) layerPlay(E.play,ld,ctx.currentTime+0.02); renderAll(); return ld; }));
+  jobs.push((async()=>{ await sleepTo(takeReadyAt(h)); const pre=0.03, x=takeSlice(r.h0-pre,h); if(!x){ log('err','the take did not reach the app'); return null; }
+    const gpk=G.peakOf(x); if(hits.length&&gpk<=gtrFloor()){ log('st',`guitar peak ${dB(gpk)}, under ${dB(gtrFloor())}: only the pads make a layer`); return null; }
+    const lg=newLayer(gt,pass); sec.layers.push(lg); fadeEdge(x,sr,pre,0.008); const off=Math.round(phase(r.h0-pre,r.z,r.L)*sr), y=G.fold(x,N,off);
+    if(gt==='syn'){ E.raws.set(lg.id,{x,off,N}); IDB.put(S.ses.id+':'+lg.id+':raw',{x,off,N,sr}); }
+    E.bufs.set(lg.id,mkBuf(y,N)); storeLayer(lg,y,sr); if(E.play&&E.play.k===r.k) layerPlay(E.play,lg,ctx.currentTime+0.02); if(gt==='syn') synthLayer(lg,r.k); return lg; })());
+  const out=(await Promise.all(jobs)).filter(Boolean); save(); log('st',`layer on ${sec.name}: ${(h-r.h0).toFixed(2)} s, ${out.map(l=>TNAME[l.type]).join(' and ')||'nothing'} (${hits.length} hits)`);
+  if(!quiet) say(out.length?`${out.map(l=>TNAME[l.type]).join(' and ')} layer${out.length>1?'s':''} added: switch 6 keeps, double-tap 6 drops.`:'Nothing came in: nothing kept.',pendTxt()); renderAll(); }
 
 // ------------------------------------------------------------------ synth layers: rendered from the guitar take in a worker
 // The raw take plays until the synth is ready (a second or a few), then the synth takes over at once.
 let SW=null; const SWQ=new Map();
-function synthWorker(){ if(SW!==null) return SW; try{ const src=`${GDSP.toString()}\nconst G=GDSP();\nonmessage=e=>{ const d=e.data; let r; try{ const tr=G.transcribe(d.x,d.sr,{clean:true}); const y=G.render(tr,d.sr,d.x.length/d.sr+2.5,d.preset,{oct:d.oct,snap:d.snap,glide:d.glide}); const f=G.fold(y,d.N,d.off); const pk=G.peakOf(f), g=pk>0?0.4/pk:0; for(let i=0;i<f.length;i++) f[i]*=g; const k=G.keyOf(tr.notes); r={y:f,notes:tr.notes.length,key:k?k.tonic+':'+k.mode:null}; }catch(x){ r={err:String(x&&x.stack||x)}; } postMessage({id:d.id,r},r.y?[r.y.buffer]:[]); };`;
+function synthWorker(){ if(SW!==null) return SW; try{ const src=`${GDSP.toString()}\nconst G=GDSP();\nonmessage=e=>{ const d=e.data; let r; try{ const tr=G.transcribe(d.x,d.sr,{clean:true}); const y=G.render(tr,d.sr,d.x.length/d.sr+2.5,d.preset,{oct:d.oct,snap:d.snap,glide:d.glide}); const f=G.fold(y,d.N,d.off); const pk=G.peakOf(f), g=pk>0?0.4/pk:0; for(let i=0;i<f.length;i++) f[i]*=g; const k=G.keyOf(tr.notes), Ls=d.N/d.sr, nt=tr.notes.slice(0,400).map(n=>[Math.round((((n.t0+d.off/d.sr)%Ls)+Ls)%Ls*1000)/1000,Math.round((n.t1-n.t0)*1000)/1000,n.m+12*(d.oct||0),Math.round((n.v||0.5)*100)/100]); r={y:f,notes:tr.notes.length,nt,key:k?k.tonic+':'+k.mode:null}; }catch(x){ r={err:String(x&&x.stack||x)}; } postMessage({id:d.id,r},r.y?[r.y.buffer]:[]); };`;
   SW=new Worker(URL.createObjectURL(new Blob([src],{type:'application/javascript'}))); SW.onmessage=e=>{ const f=SWQ.get(e.data.id); if(f){ SWQ.delete(e.data.id); f(e.data.r); } }; }catch(e){ SW=false; } return SW; }
 function synthRun(d){ return new Promise(res=>{ const w=synthWorker(), id=uid(); d.id=id;
   if(!w){ setTimeout(()=>{ try{ const tr=G.transcribe(d.x,d.sr,{clean:true}), y=G.render(tr,d.sr,d.x.length/d.sr+2.5,d.preset,{oct:d.oct,snap:d.snap,glide:d.glide}), f=G.fold(y,d.N,d.off), pk=G.peakOf(f); for(let i=0;i<f.length;i++) f[i]*=pk>0?0.4/pk:0; res({y:f,notes:tr.notes.length}); }catch(e){ res({err:String(e)}); } },10); return; }
@@ -871,7 +922,7 @@ async function synthLayer(l,k){ let raw=E.raws.get(l.id); if(!raw){ const d=awai
   l._rendering=true; renderAll(); const t0=performance.now();
   const r=await synthRun({x:raw.x.slice(),sr:ctx.sampleRate,N:raw.N,off:raw.off,preset:l.preset||'pad',oct:l.oct||0,snap:!!l.snap,glide:!!l.glide});
   l._rendering=false; if(r.err||!r.y){ log('err','synth render: '+(r.err||'nothing')); say('The synth could not be rendered: the raw take stays.'); renderAll(); return; }
-  l.notes=r.notes; log('st',`synth ${l.preset}: ${r.notes} notes in ${Math.round(performance.now()-t0)} ms`);
+  l.notes=r.notes; if(r.nt) l.nt=r.nt; log('st',`synth ${l.preset}: ${r.notes} notes in ${Math.round(performance.now()-t0)} ms`);
   const buf=mkBuf(r.y,raw.N); E.bufs.set(l.id,buf); storeLayer(l,r.y,ctx.sampleRate); save();
   const P=E.play; if(P&&P.k===k&&P.srcs.get(l.id)){ const t=ctx.currentTime+0.04; layerSilence(P,l.id,t,0.03); layerPlay(P,l,t); }
   renderAll(); }
@@ -879,8 +930,8 @@ async function synthLayer(l,k){ let raw=E.raws.get(l.id); if(!raw){ const d=awai
 // ------------------------------------------------------------------ drums: what you play on the pads, as hits on the loop
 function padHit(i,ev){ initAudio(); const now=ctx.currentTime; drumNow(i,now,0.9);
   if(PADCAL.on){ PADCAL.hits.push(p2h(evT(ev))); if(PADCAL.hits.length>=8) padCalDone(); return; }
-  const r=E.rec; if(r&&r.type==='drm'&&r.first){ const h=p2h(evT(ev))-(S.padFix||0)/1000; if(h>=r.S0-0.05) r.hits.push({t:h,i,v:0.9}); return; }
-  if(r&&r.type==='drm'&&E.play){ const P=E.play, fix=(S.padFix||0)/1000, h=p2h(evT(ev))-fix; let ph=phase(h,P.z,P.L);
+  const r=E.rec; if(r&&r.first){ const h=p2h(evT(ev))-(S.padFix||0)/1000; if(h>=r.S0-0.05) r.hits.push({t:h,i,v:0.9}); return; }
+  if(r&&E.play){ const P=E.play, fix=(S.padFix||0)/1000, h=p2h(evT(ev))-fix; let ph=phase(h,P.z,P.L);
     if(S.quant){ const q=barS()/S.quant*4; ph=(Math.round(ph/q)*q)%P.L; } const rr=Math.floor((h-P.z)/P.L); r.hits.push({ph,i,v:0.9,r:rr,n:1}); } }
 async function renderDrums(hits,L){ const sr=ctx.sampleRate, N=Math.round(L*sr), tail=Math.round(2*sr), OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
   const y=new Float32Array(N); if(!OAC) return y; const oc=new OAC(1,N+tail,sr), nb=oc.createBuffer(1,sr*2,sr), d=nb.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
@@ -900,6 +951,9 @@ const pending=()=>{ const out=[]; (S.ses?S.ses.secs:[]).forEach((s,k)=>s.layers.
 const toPrint=()=>{ const out=[]; (S.ses?S.ses.secs:[]).forEach((s,k)=>s.layers.forEach(l=>{ if(l.state==='accepted'&&!l.printed&&!l._busy&&!l.muted) out.push({l,k}); })); return out; };
 function pendTxt(){ const p=pending().length, q=toPrint().length; return [p?`${p} layer${p>1?'s':''} to keep or drop (switch 6)`:'',q?`${q} to print when you stop`:''].filter(Boolean).join(' · '); }
 function newestPending(){ const p=pending(); const cur=p.filter(x=>x.k===(S.ses?S.ses.cur:0)); const a=cur.length?cur:p; return a.sort((x,y)=>(y.l.created||0)-(x.l.created||0))[0]||null; }
+function passOf(x){ const sec=SEC(x.k); return x.l.pass&&sec?sec.layers.filter(l=>l.pass===x.l.pass&&l.state==='pending').map(l=>({l,k:x.k})):[x]; }
+function acceptPass(x){ if(!x) return; passOf(x).forEach(accept); }
+function dismissPass(x){ if(!x) return; passOf(x).forEach(dismiss); }
 function accept(x){ if(!x) return; x.l.state='accepted'; save(); log('st',`kept ${TNAME[x.l.type]} on ${SEC(x.k).name}`); say(`${TNAME[x.l.type]} layer kept.`,pendTxt()); renderAll(); }
 function dismiss(x){ if(!x) return; const sec=SEC(x.k), l=x.l; layerSilence(E.play&&E.play.k===x.k?E.play:null,l.id,ctx.currentTime,0.03);
   sec.layers.splice(sec.layers.indexOf(l),1); E.bufs.delete(l.id); E.raws.delete(l.id); IDB.del(S.ses.id+':'+l.id); IDB.del(S.ses.id+':'+l.id+':raw');
@@ -914,7 +968,7 @@ function nextWrap(P,min){ const now=ctx.currentTime; return P.z+Math.ceil((now+m
 async function goSection(k2,newSec){ const P=E.play; if(!P||E.next) return; const W=nextWrap(P,0.35); countIn(W);
   if(E.rec&&!E.rec.first) await layerStop(ctx.currentTime,true);
   loopEnd(P,W); const G0=E.gen;
-  if(newSec){ E.next={W,newSec:true}; say('A new section starts at the end of this time round…','Rec on the Pads tab makes it a drum pass.'); at(W-0.01,()=>{ if(G0!==E.gen) return; E.next=null; const t=E.nextType||'gtr'; E.nextType=null; firstStart(t,W,t==='drm'?null:'next'); }); }
+  if(newSec){ E.next={W,newSec:true}; say('A new section starts at the end of this time round…','Play guitar or the pads; switch 1 closes it.'); at(W-0.01,()=>{ if(G0!==E.gen) return; E.next=null; firstStart(W,'next'); }); }
   else { await ensureBufs(k2); if(G0!==E.gen) return; const P2=loopStart(k2,W); E.next={W,k:k2}; S.ses.cur=k2; clkRetime(W,60/bpmOf(k2)); say(`Section ${SEC(k2).name} next…`);
     at(W-0.005,()=>{ if(G0!==E.gen) return; E.play=P2; E.next=null; say(`Section ${SEC(k2).name} is looping.`,pendTxt()); renderAll(); }); }
   renderAll(); }
@@ -923,9 +977,9 @@ async function goSection(k2,newSec){ const P=E.play; if(!P||E.next) return; cons
 async function playFrom(k,o){ o=o||{}; const e=await perfReady(); if(e) say(e); const G0=++E.gen;
   if(!o.newSec) await ensureBufs(k); if(G0!==E.gen) return; await openInput(); if(G0!==E.gen) return;
   if(!o.newSec) S.ses.cur=k; const ci=!!S.countIn, z=ci?ctx.currentTime+0.35+barS():ctx.currentTime+0.03; clkStart(z,60/bpmOf(o.newSec?S.ses.cur:k)); if(ci) countIn(z);
-  if(o.newSec){ E.st='first'; E.next={W:z,newSec:true}; say(ci?'Count-in: a new section…':'A new section…'); at(z-0.01,()=>{ if(G0!==E.gen) return; E.next=null; const t=E.nextType||o.rec||'gtr'; E.nextType=null; firstStart(t,z,t==='drm'?null:'next'); }); renderAll(); return; }
+  if(o.newSec){ E.st='first'; E.next={W:z,newSec:true}; say(ci?'Count-in: a new section…':'A new section…'); at(z-0.01,()=>{ if(G0!==E.gen) return; E.next=null; firstStart(z,'next'); }); renderAll(); return; }
   const P=loopStart(k,z); E.play=P; E.st='loop'; say(ci?`Count-in: section ${SEC(k).name}…`:`Section ${SEC(k).name} is looping.`,pendTxt());
-  if(o.rec) at(z-0.01,()=>{ if(G0!==E.gen||E.play!==P) return; layerStart(o.rec,z); }); else at(z,()=>{ if(G0===E.gen&&E.play===P) say(`Section ${SEC(k).name} is looping.`,pendTxt()); });
+  if(o.rec) at(z-0.01,()=>{ if(G0!==E.gen||E.play!==P) return; layerStart(z); }); else at(z,()=>{ if(G0===E.gen&&E.play===P) say(`Section ${SEC(k).name} is looping.`,pendTxt()); });
   renderAll(); }
 // the TP-7 back in the performance stance after printing or tape playback
 let PR=null;
@@ -933,10 +987,10 @@ async function perfReady(){ if(TP.perf&&TP.stance===S.tp.stance&&TP.arm&&TP.arm.
   if(!PR) PR=tpPerform().finally(()=>{ PR=null; }); return await PR; }
 // stop: the loop and the metronome; a layer being recorded is kept (to keep or drop); the print follows if anything is kept
 async function stopAll(quiet,h){ const now=ctx?ctx.currentTime:0; if(h==null) h=now;
-  if(E.st==='first'&&E.rec){ if(h-E.rec.S0<0.5*barS()) firstCancel(); else { const r=E.rec; await firstClose(h,r.type,true); } }
-  E.gen++; countOff(); clearTimeout(E.capT); E.next=null; E.nextType=null;
+  if(E.st==='first'&&E.rec){ if(h-E.rec.S0<0.5*barS()) firstCancel(); else await firstClose(h,null,true); }
+  E.gen++; countOff(); clearTimeout(E.capT); E.next=null;
   if(E.rec&&!E.rec.first) await layerStop(h,true);
-  if(E.play){ loopEnd(E.play,now); E.play=null; } clkStop(); preview(false);
+  if(E.play){ loopEnd(E.play,now); E.play=null; } clkStop(); prevSync();
   if(['loop','first','ready','stopped'].includes(E.st)) E.st=S.ses&&S.ses.secs.length?'stopped':(S.ses?'ready':'idle');
   if(E.st==='ready') clkStart(clkFirst(),60/S.ses.bpm);
   if(!quiet){ say(E.cancelled?'Cancelled: nothing kept.':'Stopped.',pendTxt()); if(S.printOnStop&&toPrint().length) printSoon(); } E.cancelled=false; renderAll(); }
@@ -1066,33 +1120,26 @@ async function tapeStop(){ E.gen++; midiPurge('tape'); tpRelease(); mNow([0xB0,1
 // which section the tape is in now (from its last position report)
 function tapeSecAt(pos){ const ses=S.ses; if(!ses) return -1; const t=pos/1000; for(let k=ses.secs.length-1;k>=0;k--) if(t>=ses.secs[k].s-0.05) return k; return -1; }
 
-// ================================================================== actions: the footswitch and the on-screen switches share these
-// Your layout (6 Nov): 1 guitar layer, 2 play/stop, 3 previous section, 4 next section (from the last one: a new section),
-// 5 synth layer, 6 keep the newest layer (tap) or drop it (double tap); with nothing to keep, four taps of 6 start a new session.
-const SW_ACT=['gtr','play','prev','next','syn','six'];
-const SW_LABEL=[['Guitar','layer · close'],['Play / stop',''],['Previous','section'],['Next','section · new'],['Synth','layer · close'],['Keep','double tap: drop']];
+// ================================================================== actions: the footswitch drives these (build 5: no switches on screen)
+// Build 5 layout: 1 record or close a loop, whatever you play (guitar, pads or both), 2 play/stop, 3 previous section, 4 next section
+// (from the last one: a new section), 5 the guitar's sound: raw or the synth chosen in Sounds, 6 keep the newest pass (tap) or drop it
+// (double tap); with nothing to keep, four taps of 6 start a new session.
+const SW_ACT=['rec','play','prev','next','src','six'];
 async function act(a,ev,hh){ initAudio(); if(!ctx) return; if(ctx.state!=='running') try{ await ctx.resume(); }catch(e){}
-  const h=hh!=null?hh:p2h(evT(ev)); log('do',`${a} (${E.st}${E.rec?', recording '+E.rec.type:''})`); requestWake();
+  const h=hh!=null?hh:p2h(evT(ev)); log('do',`${a} (${E.st}${E.rec?', recording':''})`); requestWake();
   try{ await act2(a,h); }catch(err){ log('err',`${a}: ${err&&err.stack||err}`); say('Error: '+(err&&err.message||err)); } renderAll(); }
 async function act2(a,h){ const st=E.st, ses=S.ses;
-  if(a==='gtr'||a==='syn'){
+  if(a==='rec'||a==='gtr'||a==='syn'){
     if(st==='prep'){ say('Getting the TP-7 ready: press once the metronome runs.'); return; }
-    if(st==='printing'){ E.printStop=true; E.after={play:true,rec:a}; say('Recording after this print pass…'); return; }
-    if(st==='tape'){ await tapeStop(); return playFrom(ses.cur||0,{rec:a}); }
+    if(st==='printing'){ E.printStop=true; E.after={play:true,rec:true}; say('Recording after this print pass…'); return; }
+    if(st==='tape'){ await tapeStop(); return playFrom(ses.cur||0,{rec:true}); }
     if(st==='idle') return prepSession(ses?ses.bpm:(TAP.bpm||100));
-    if(st==='ready'){ printCancelSoon(); await openInput(); if(!CLK.on) clkStart(clkFirst()); return firstStart(a,S.loopBars?clkNear(h):h); }
-    if(st==='first'){ if(E.rec) return firstClose(h,a); return; }
-    if(st==='loop'){ if(E.next){ say('Changing section: record once it starts.'); return; } if(E.rec){ const t=E.rec.type; await layerStop(h); if(t===a) return; } return layerStart(a,h); }
-    if(st==='stopped'){ printCancelSoon(); return playFrom(ses.cur||0,{rec:a}); }
+    if(st==='ready'){ printCancelSoon(); await openInput(); if(!CLK.on) clkStart(clkFirst()); return firstStart(S.loopBars?clkNear(h):h); }
+    if(st==='first'){ if(E.rec) return firstClose(h); return; }
+    if(st==='loop'){ if(E.next){ say('Changing section: record once it starts.'); return; } if(E.rec) return layerStop(h); return layerStart(h); }
+    if(st==='stopped'){ printCancelSoon(); return playFrom(ses.cur||0,{rec:true}); }
     return; }
-  // drums can come first (8 Nov: "start recording whichever layer I want first, such as drums"): Rec starts a section's first pass too
-  if(a==='drm'){ if(E.next&&E.next.newSec){ E.nextType=E.nextType==='drm'?null:'drm'; say(E.nextType?'The new section starts as drums: play the pads when it starts.':'The new section starts as guitar.'); return; }
-    if(st==='loop'&&!E.next){ if(E.rec&&E.rec.type==='drm') return layerStop(h); if(E.rec) await layerStop(h); return layerStart('drm',h); }
-    if(st==='ready'){ printCancelSoon(); if(!CLK.on) clkStart(clkFirst()); return firstStart('drm',S.loopBars?clkNear(h):h); }
-    if(st==='first'){ if(E.rec&&E.rec.type==='drm') return firstClose(h,'drm'); if(E.rec) return firstToDrums(); return; }
-    if(st==='stopped'){ printCancelSoon(); return playFrom(ses.cur||0,{rec:'drm'}); }
-    if(st==='idle') return prepSession(ses?ses.bpm:(TAP.bpm||100));
-    toast('Wait a moment: the TP-7 is busy.'); return; }
+  if(a==='src'){ S.src=S.src==='syn'?'gtr':'syn'; save(); prevSync(); say(`Your guitar sounds as ${srcName()}.`,E.rec?'The layer being recorded becomes that when you close it.':'Switch 5 swaps it back.'); return; }
   if(a==='play'){
     if(st==='ready'){ S.metroOn=!S.metroOn; save(); if(S.metroOn&&!CLK.on) clkStart(clkFirst()); say(`Metronome ${S.metroOn?'on':'off'}.`); return; }
     if(st==='first'||st==='loop') return stopAll(false,h);
@@ -1105,9 +1152,9 @@ async function act2(a,h){ const st=E.st, ses=S.ses;
     if(st==='stopped'){ printCancelSoon(); if(a==='next') return cur>=n-1?playFrom(cur,{newSec:true}):playFrom(cur+1); return playFrom(Math.max(0,cur-1)); }
     if(st==='tape'){ const k=clamp(cur+(a==='next'?1:-1),0,n-1); ses.cur=k; return tapePlay(k,E.tape&&E.tape.loop); }
     return; }
-  if(a==='keep') return accept(newestPending());
-  if(a==='drop') return dismiss(newestPending()); }
-// switch 6: with a layer to keep or drop, a tap keeps it and a double tap (within 0.35 s) drops it; otherwise tap tempo
+  if(a==='keep') return acceptPass(newestPending());
+  if(a==='drop') return dismissPass(newestPending()); }
+// switch 6: with a pass to keep or drop, a tap keeps it and a double tap (within 0.35 s) drops it; otherwise tap tempo
 const SIX={n:0,t:null};
 function six(ev){ if(newestPending()){ SIX.n++; clearTimeout(SIX.t); if(SIX.n>=2){ SIX.n=0; act('drop',ev); return; } SIX.t=setTimeout(()=>{ SIX.n=0; act('keep'); },350); return; }
   if(SIX.n){ SIX.n=0; clearTimeout(SIX.t); } tapTempo(evT(ev)); }
@@ -1136,29 +1183,30 @@ const typing=t=>!!(t&&t.matches&&(t.matches('textarea,[contenteditable="true"]')
   if(now-PED.up[i]<45){ log('in',`switch ${i+1}: bounce ignored`); return; }
   PED.down[i]=1; PED.kd[i]=now; setTimeout(()=>{ if(PED.down[i]&&performance.now()-PED.kd[i]>=120){ PED.down[i]=0; } },140);
   sw(i,e,'key'); },true));
-function sw(i,ev,src){ log('in',`switch ${i+1}${src==='key'?'':' (screen)'}`); swFlash(i,true); setTimeout(()=>swFlash(i,false),160);
+function sw(i,ev,src){ log('in',`switch ${i+1}${src==='key'?'':' (screen)'}`);
   if(PED.gate&&!PED.gate(i,ev)) return; if(i===5) return six(ev); act(SW_ACT[i],ev); }
 function swFlash(i,on){ const b=document.querySelector(`[data-sw="${i}"]`); if(b) b.classList.toggle('flash',!!on); }
 async function requestWake(){ try{ if('wakeLock' in navigator&&!E.wake) E.wake=await navigator.wakeLock.request('screen'); }catch(e){} }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ E.wake=null; if(S.ses) requestWake(); if(ctx&&ctx.state!=='running') ctx.resume().catch(()=>{}); } });
 
-// ================================================================== screens
-function showTab(t){ ['Loop','Pads','Secs','Set'].forEach(x=>{ $('#p'+x).hidden=x!==t; }); $$('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t))); E.tab=t; renderAll(); }
-function renderAll(){ renderScreen(); const t=E.tab||'Loop'; if(t==='Loop') renderLoop(); else if(t==='Pads') renderPads(); else if(t==='Secs') renderSecs(); else renderSet(); }
+
+// ================================================================== screens (build 5, the user's sketch of 9 Nov): Arrange (default), Sounds, Settings
+const TABS=['Arr','Snd','Set'];
+function showTab(t){ if(!TABS.includes(t)) t='Arr'; TABS.forEach(x=>{ $('#p'+x).hidden=x!==t; }); $$('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t))); E.tab=t;
+  if(t==='Snd') sndOpen(); else prevSync(); renderAll(); if(t==='Arr') tlKick(); }
+function renderAll(){ renderScreen(); const t=E.tab||'Arr'; if(t==='Arr') renderArr(); else if(t==='Snd') renderSnd(); else renderSet(); if(E.sheet!=null) renderSheet(); }
 const curK=()=>{ if(E.play) return E.play.k; if(E.next&&E.next.k!=null) return E.next.k; return S.ses?S.ses.cur||0:0; };
 function posTxt(){ if(!ctx) return '–'; const now=ctx.currentTime, b=beatS();
   if(E.ci&&now>=E.ci.a-0.01&&now<E.ci.b) return `in ${Math.min(4,Math.floor((now-E.ci.a)/b+0.02)+1)}`;
   if(E.st==='first'&&E.rec){ const t=now-E.rec.S0; if(t<0) return '–'; const n=Math.floor(t/b); return `${Math.floor(n/4)+1}·${n%4+1}`; }
-  if(E.play){ const t=now-E.play.z; if(t<0) return '–'; const n=Math.floor(t/b), per=Math.round(E.play.L/b), m=n%per; return `${Math.floor(m/4)+1}·${m%4+1}`; }
+  if(E.play){ const t=now-E.play.z; if(t<0) return '–'; const n=Math.floor(t/b), per=Math.max(1,Math.round(E.play.L/b)), m=n%per; return `${Math.floor(m/4)+1}·${m%4+1}`; }
   if(E.st==='tape'&&TP.pos!=null){ const s=TP.pos/1000; return `${Math.floor(s/60)}:${(s%60).toFixed(1).padStart(4,'0')}`; }
   if(CLK.on&&E.st==='ready'){ const n=Math.floor((now-CLK.z0)/b); return n>=0?`·${(n%4+4)%4+1}`:'–'; }
   return '–'; }
-function renderScreen(){ const st=$('#scState'), sm=$('#scSmall'); if(!st) return; st.textContent=E.msg||'Tinebox Loop'; sm.textContent=E.small||'';
-  const ch=[]; const tp=midiReady()?(TP.info?'TP-7':'TP-7 (no reply yet)'):'no TP-7';
-  ch.push(`<span class="chip ${midiReady()?'on':'bad'}">${esc(tp)}</span>`);
-  if(midiReady()) ch.push(`<span class="chip ${TP.arm&&TP.arm.v?'on':''}">${TP.arm&&TP.arm.v?'armed':'not armed'}</span>`);
-  if(S.ses) ch.push(`<span class="chip on">${bpmTxt(bpmNow())} bpm</span>`);
-  if(S.ses&&S.ses.rt!=null) ch.push(`<span class="chip">round trip ${Math.round(S.ses.rt*1000)} ms</span>`);
+function renderScreen(){ const st=$('#scState'), sm=$('#scSmall'), ti=$('#scTitle'); if(!st) return; const tt=S.ses?`Session at ${bpmTxt(bpmNow())} BPM`:'Tinebox Loop'; if(ti.textContent!==tt) ti.textContent=tt;
+  st.textContent=E.msg||''; sm.textContent=E.small||'';
+  const ch=[]; if(!midiReady()) ch.push('<span class="chip bad">no TP-7</span>'); else if(!TP.info) ch.push('<span class="chip bad">TP-7: no reply yet</span>');
+  ch.push(`<span class="chip ${S.src==='syn'?'on':''}">guitar: ${S.src==='syn'?esc(srcName()):'raw'}</span>`);
   const p=pending().length; if(p) ch.push(`<span class="chip bad">${p} to keep or drop</span>`);
   const q=toPrint().length; if(q) ch.push(`<span class="chip">${q} to print</span>`);
   if(IN.stream) ch.push(`<span class="chip ${IN.pk>0.003?'on':''}">in ${IN.pk>3e-5?Math.round(20*Math.log10(IN.pk))+' dB':'silent'}</span>`);
@@ -1166,7 +1214,8 @@ function renderScreen(){ const st=$('#scState'), sm=$('#scSmall'); if(!st) retur
 setInterval(()=>{ const p=$('#scPos'); if(!p) return; const t=posTxt(); if(p.textContent!==t) p.textContent=t; p.classList.toggle('rec',!!(E.rec||E.st==='first'));
   const r=$('#scRing'); if(r&&ctx){ let f=0; if(E.play){ f=phase(ctx.currentTime,E.play.z,E.play.L)/E.play.L; if(ctx.currentTime<E.play.z) f=0; } else if(E.st==='first'&&E.rec){ f=((ctx.currentTime-E.rec.S0)/barS())%1; } r.style.width=(Math.max(0,f)*100).toFixed(1)+'%'; r.style.background=E.rec||E.st==='first'?'#ff6a5e':''; }
   ciShow(E.ci&&ctx&&ctx.currentTime>=E.ci.a-0.01&&ctx.currentTime<E.ci.b?String(Math.min(4,Math.floor((ctx.currentTime-E.ci.a)/E.ci.beat+0.02)+1)):'');
-  if(E.tab==='Loop'||!E.tab){ const rs=E.rec?E.rec.type:''; if(rs!==E.recShown){ E.recShown=rs; renderLoop(); } }
+  const m=$('#sndIn i'); if(m) m.style.width=Math.min(100,Math.max(0,(IN.pk>1e-5?(20*Math.log10(IN.pk)+60)/60:0)*100)).toFixed(0)+'%';
+  if(E.tab==='Arr'){ const ts=trState(); if(ts!==E.trShown) renderTransport(); }
   renderScreen(); },60);
 function ciShow(n){ let el=$('#countBig'); if(!el){ if(!n) return; el=document.createElement('div'); el.id='countBig'; el.className='count-big'; el.setAttribute('aria-hidden','true'); document.body.appendChild(el); } if(el.textContent!==n) el.textContent=n; el.hidden=!n; }
 function layerRow(l,k){ const st=l._busy?'processing…':l._rendering?'rendering the synth…':l.printed?'on the TP-7':l.state==='pending'?'keep or drop?':'kept · prints when you stop';
@@ -1177,42 +1226,137 @@ function layerRow(l,k){ const st=l._busy?'processing…':l._rendering?'rendering
   return `<div class="layer"><span class="ltag ${l.type}">${TNAME[l.type]}</span><span class="lst ${cls}">${st}</span>
     <span class="lact">${l.state==='pending'?`<button type="button" class="btn sm pri" data-lact="keep" data-id="${l.id}" data-k="${k}">Keep</button><button type="button" class="btn sm" data-lact="drop" data-id="${l.id}" data-k="${k}">Drop</button>`:!l.printed?`<button type="button" class="btn sm" data-lact="drop" data-id="${l.id}" data-k="${k}">Drop</button>`:''}
     <button type="button" class="btn sm" data-lact="mute" data-id="${l.id}" data-k="${k}" aria-pressed="${!!l.muted}">${l.muted?'Muted':'Mute'}</button></span>${opts}</div>`; }
-function renderLoop(){ const el=$('#pLoop'); if(!el) return; const ses=S.ses, k=curK(), sec=ses&&SEC(k);
-  const swh=SW_ACT.map((a,i)=>{ const on=(a==='gtr'&&E.rec&&E.rec.type==='gtr')||(a==='syn'&&E.rec&&E.rec.type==='syn')||(a==='play'&&(E.st==='loop'||E.st==='first'||E.st==='tape'));
-    return `<button type="button" data-sw="${i}" class="${on?'on':''}"><span class="n">${i+1}</span><b>${SW_LABEL[i][0]}</b><small>${SW_LABEL[i][1]}</small></button>`; }).join('');
-  let body='';
-  if(!ses) body=`<div class="card"><h3>Start</h3><p class="note">1. Settings: Connect the TP-7 (USB-C) and allow MIDI and the microphone.</p><p class="note">2. On the TP-7: record sources line 1, USB 1 and USB 2; MIDI setting cue; auto start and count-in off.</p><p class="note">3. Tap switch 6 four times at your tempo. The app makes a new TP-7 recording (about 6 s), then the metronome starts. Switch 1 records guitar, switch 5 a synth loop.</p><div class="row"><button type="button" class="btn pri" data-act="newSes">New session at ${Math.round(TAP.bpm||100)} bpm</button></div></div>`;
-  else if(!sec) body=`<div class="card"><h3>Session at ${bpmTxt(ses.bpm)} bpm</h3><p class="note">${E.st==='ready'?(S.loopBars?'Start with any layer. Switch 1 records a guitar loop from the bar line nearest your press; switch 1 again closes it on the nearest bar line.':'Start with any layer. Switch 1 starts a guitar loop the moment you press it; switch 1 again closes it the moment you press, and the loop plays straight away. The tempo then moves a little so the loop is whole bars.')+' Switch 5 does the same as a synth loop, Rec on the Pads tab as drums.':'Tap switch 1 or 5 to get the TP-7 ready again and record.'}</p></div>`;
-  else body=`<div class="card"><h3>Section ${esc(sec.name)} · ${sec.bars} bar${sec.bars>1?'s':''} · ${bpmTxt(bpmOf(k))} bpm<span class="note"> · ${k+1} of ${ses.secs.length}</span></h3>${sec.layers.length?sec.layers.map(l=>layerRow(l,k)).join(''):'<p class="note">No layers.</p>'}
-    ${E.st==='loop'?`<div class="row"><button type="button" class="btn sm" data-act="drm" aria-pressed="${!!(E.rec&&E.rec.type==='drm')}">${E.rec&&E.rec.type==='drm'?'Recording drums…':'Record drums'}</button><span class="note">play them on the Pads tab</span></div>`:''}</div>`;
-  el.innerHTML=`<div class="sw">${swh}</div>${body}<p class="note">Keep sends a layer to the TP-7 when you stop (one straight pass per section and track: guitar on track 1, synth on 2, drums on 3). Drop removes it for good. Nothing reaches the TP-7 before you keep it.</p>`; }
-function renderPads(){ const el=$('#pPads'); if(!el) return; const rec=!!(E.rec&&E.rec.type==='drm');
-  el.innerHTML=`<div class="row"><button type="button" class="btn ${rec?'rec':''}" data-act="drm">${rec?'● Recording: tap to stop':'Rec'}</button><select data-set="kit" aria-label="Kit">${Object.entries(KITS).map(([k,v])=>`<option value="${k}"${S.kit===k?' selected':''}>${v.name}</option>`).join('')}</select>
-    <select data-set="quant" aria-label="Snap hits"><option value="0"${!S.quant?' selected':''}>As played</option><option value="8"${S.quant===8?' selected':''}>Snap to 8ths</option><option value="16"${S.quant===16?' selected':''}>Snap to 16ths</option></select></div>
-    <div class="pads">${PADS.map((p,i)=>`<button type="button" class="pad" data-pad="${i}">${p}</button>`).join('')}</div>
-    <div class="card"><div class="row"><span class="lbl">Pad timing: ${S.padFix==null?'not set (hits as they arrive)':`hits moved ${S.padFix} ms earlier`}</span><button type="button" class="btn sm" data-act="padCal">${PADCAL.on?`Tap on the clicks (${PADCAL.hits.length} of 8)`:'Set by tapping'}</button></div>
-    <p class="note">Rec records drums from now until you tap Rec again: a layer while a section loops, or a new section's first pass (in a ready session, or after Next until the new section starts), closed when you tap Rec again. While a layer records, you hear what you played so far from the next time round. A touch screen reacts a little late; set the pad timing once so the hits land where you played them.</p></div>`; }
-function secSum(sec){ const c={gtr:0,syn:0,drm:0}, pr={gtr:0,syn:0,drm:0}; sec.layers.forEach(l=>{ c[l.type]++; if(l.printed) pr[l.type]++; });
-  const parts=Object.keys(c).filter(t=>c[t]).map(t=>`${c[t]} ${TNAME[t].toLowerCase()}`); const onTape=sec.layers.filter(l=>l.printed).length, kept=sec.layers.filter(l=>l.state==='accepted'&&!l.printed).length, pend=sec.layers.filter(l=>l.state==='pending').length;
-  return `${parts.join(', ')||'empty'} · ${onTape?`${onTape} on the TP-7`:'nothing on the TP-7'}${kept?` · ${kept} to print`:''}${pend?` · ${pend} to keep or drop`:''}`; }
-function renderSecs(){ const el=$('#pSecs'); if(!el) return; const ses=S.ses;
-  if(!ses||!ses.secs.length){ el.innerHTML='<div class="card"><p class="note">No sections yet. Record a loop first; Next (switch 4) on the last section records a new one.</p></div>'; return; }
-  const tk=E.st==='tape'&&TP.pos!=null?tapeSecAt(TP.pos):-1;
-  el.innerHTML=ses.secs.map((s,k)=>`<div class="card sec ${k===curK()?'cur':''}"><span class="let dot">${esc(s.name)}</span><div><b>${s.bars} bar${s.bars>1?'s':''}</b> · ${bpmTxt(bpmOf(k))} bpm${tk===k?' · <b style="color:var(--ok)">playing on the TP-7</b>':''}<div class="sum">${secSum(s)}</div></div><span></span>
-    <div class="acts"><button type="button" class="btn sm pri" data-act="loopApp" data-k="${k}">Loop here</button><button type="button" class="btn sm" data-act="tapePlay" data-k="${k}">▶ TP-7 from here</button><button type="button" class="btn sm" data-act="tapeLoop" data-k="${k}">Loop on TP-7</button></div></div>`).join('')+
-    `<div class="row"><button type="button" class="btn" data-act="tapeStop">■ Stop TP-7</button><button type="button" class="btn" data-act="printNow">Print kept layers now${toPrint().length?` (${toPrint().length})`:''}</button></div>
-    <p class="note">Loop here loops the section in the app (as switches 3 and 4 do). The TP-7 buttons play its recording from the section's cue; a section without a cue yet plays from the cue before it and gets its cue on the way.</p>`; }
-function renderSet(){ const el=$('#pSet'); if(!el) return; const s=S.synth, info=TP.info;
+
+// ------------------------------------------------------------------ Arrange: sections across, tracks down, a playhead; the transport below
+const TL={W:0,H:0,dpr:1,lay:null,down:null,raf:0,last:0,secShown:-1};
+const LANES=[['gtr','Guitar','#B39DF0'],['syn','Synth','#E8796B'],['drm','Drums','#F2C14E']];
+const PADC=['#7BC99A','#6E9BF2','#E8796B','#F2C14E','#F7DA8B','#9AD3E0'];
+const ICO={prev:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',next:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg>',
+  play:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>',stop:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>',
+  loop:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v3l4-4-4-4v3H5v6h2zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2z"/></svg>'};
+function renderArr(){ const el=$('#pArr'); if(!el) return;
+  if(!el.firstChild){ el.innerHTML=`<div class="tl" id="tl"><div class="tlsc" id="tlsc"><canvas id="tlc" aria-label="Sections and layers" role="img"></canvas></div><div class="tlempty" id="tlEmpty" hidden></div></div>
+    <div class="tr" id="tr"><div class="seg" role="group" aria-label="Play from"><button type="button" data-act="tMode" data-m="app">App</button><button type="button" data-act="tMode" data-m="tape">TP-7</button></div><span class="sp"></span>
+      <button type="button" class="tbtn" data-act="tPrev" aria-label="Previous section">${ICO.prev}</button><button type="button" class="tbtn big" data-act="tPlay" aria-label="Play">${ICO.play}</button><button type="button" class="tbtn" data-act="tNext" aria-label="Next section">${ICO.next}</button><span class="sp"></span>
+      <button type="button" class="tbtn" data-act="tLoop" aria-label="Loop the section on the TP-7">${ICO.loop}</button></div>`;
+    const sc=$('#tlsc'); new ResizeObserver(()=>tlKick()).observe($('#tl'));
+    sc.addEventListener('pointerdown',e=>{ TL.down={x:e.clientX,y:e.clientY,sl:sc.scrollLeft}; });
+    sc.addEventListener('pointerup',e=>{ const d=TL.down; TL.down=null; if(!d||Math.abs(e.clientX-d.x)>8||Math.abs(e.clientY-d.y)>8||Math.abs(sc.scrollLeft-d.sl)>8) return; const r=$('#tlc').getBoundingClientRect(); tlTap(e.clientX-r.left,e.clientY-r.top); }); }
+  const em=$('#tlEmpty'), ses=S.ses; let h='';
+  if(!ses) h=`<div><b>No session yet.</b></div><div>1. Settings: Connect the TP-7 and allow MIDI and the microphone.<br>2. On the TP-7: record sources line 1, USB 1 and USB 2; MIDI setting cue; auto start and count-in off.<br>3. Tap switch 6 four times at your tempo.</div><button type="button" class="btn pri" data-act="newSes">New session at ${Math.round(TAP.bpm||100)} bpm</button>`;
+  else if(!ses.secs.length&&E.st!=='first') h=E.st==='prep'?'<div>Getting the TP-7 ready…</div>':`<div><b>Switch 1</b> starts a loop the moment you press it: play guitar, tap the pads in Sounds, or both. <b>Switch 1</b> again closes it, and it plays straight away.</div><div>Your guitar sounds as ${esc(srcName())}; <b>switch 5</b> swaps raw and synth.</div>`;
+  if(em.innerHTML!==h) em.innerHTML=h; em.hidden=!h; renderTransport(); tlKick(); }
+const trState=()=>[E.st,E.tmode||'app',!!E.tloop,S.ses?S.ses.cur:-1,S.ses?S.ses.secs.length:0].join('|');
+function renderTransport(){ const tr=$('#tr'); if(!tr) return; E.trShown=trState(); const tape=E.tmode==='tape', ses=S.ses, n=ses?ses.secs.length:0, cur=ses?ses.cur||0:0;
+  tr.querySelectorAll('[data-act="tMode"]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.m==='tape')===tape)));
+  const playing=tape?E.st==='tape':['loop','first'].includes(E.st), pb=tr.querySelector('[data-act="tPlay"]'); pb.innerHTML=playing?ICO.stop:ICO.play; pb.classList.toggle('on',playing); pb.setAttribute('aria-label',playing?'Stop':'Play');
+  pb.disabled=!ses||(tape&&!n); tr.querySelector('[data-act="tPrev"]').disabled=!n||cur<=0; tr.querySelector('[data-act="tNext"]').disabled=!n||(tape&&cur>=n-1);
+  const lb=tr.querySelector('[data-act="tLoop"]'); lb.hidden=!tape; lb.setAttribute('aria-pressed',String(!!E.tloop)); }
+// where everything sits: widths follow each section's length (at least 76 px), then a column for a new section
+function tlLayout(){ const ses=S.ses, W=TL.W, H=TL.H; if(!ses) return null; const g=10, plusW=46, head=30, secs=ses.secs.slice();
+  const recFirst=E.st==='first'&&E.rec&&E.rec.first&&ctx, recT=recFirst?Math.max(0.3,ctx.currentTime-E.rec.S0):0;
+  const tot=secs.reduce((a,s)=>a+s.L,0)+recT, avail=Math.max(100,W-g-plusW), pxs=avail/Math.max(tot,6);
+  let x=g; const cols=secs.map((s,k)=>{ const w=Math.max(76,s.L*pxs); const c={k,x,w,s}; x+=w; return c; });
+  const rec=recFirst?{x,w:Math.max(40,recT*pxs)}:null; if(rec) x+=rec.w; const plus={x,w:plusW}; x+=plusW;
+  const lh=H-head-6, lanes=[{t:'gtr',y:head+2,h:lh*0.3},{t:'syn',y:head+2+lh*0.3,h:lh*0.3},{t:'drm',y:head+2+lh*0.6,h:lh*0.4}];
+  return {cols,rec,plus,lanes,head,g,cw:Math.max(W,x+4)}; }
+function tlKick(){ if(TL.raf) return; TL.raf=requestAnimationFrame(tlFrame); }
+function tlFrame(t){ TL.raf=0; if(E.tab!=='Arr'||document.hidden) return; const live=['loop','first','tape'].includes(E.st)||!!E.next;
+  if(!live||t-TL.last>30){ TL.last=t; tlDraw(); } if(live) TL.raf=requestAnimationFrame(tlFrame); }
+function tlDraw(){ const tl=$('#tl'), cv=$('#tlc'); if(!tl||!cv) return; const dpr=window.devicePixelRatio||1; TL.W=tl.clientWidth; TL.H=tl.clientHeight;
+  const lay=TL.lay=tlLayout(); const cw=lay?lay.cw:TL.W; if(cv.width!==Math.round(cw*dpr)||cv.height!==Math.round(TL.H*dpr)){ cv.width=Math.round(cw*dpr); cv.height=Math.round(TL.H*dpr); cv.style.width=cw+'px'; cv.style.height=TL.H+'px'; }
+  const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,cw,TL.H); c.fillStyle='#0F1214'; c.fillRect(0,0,cw,TL.H); if(!lay) return;
+  const ses=S.ses, cur=curK(), H=TL.H, F='Barlow Semi Condensed, Arial Narrow, sans-serif';
+  // lanes: a coloured edge, a faint name, a line between
+  lay.lanes.forEach((ln,i)=>{ c.fillStyle=LANES[i][2]; c.fillRect(2,ln.y+2,4,ln.h-4); c.fillStyle='#1E2327'; c.fillRect(lay.g,ln.y+ln.h-1,cw-lay.g,1); });
+  for(const col of lay.cols){ const {k,x,w,s}=col, L=s.L, bpm=bpmOf(k), beat=60/bpm, nb=Math.round(L/beat), isCur=k===cur;
+    // the beat grid, bar lines brighter
+    for(let b=1;b<nb;b++){ const bx=x+b*beat/L*w; c.fillStyle=b%4===0?'#262C31':'#181C1F'; c.fillRect(Math.round(bx),lay.head,1,H-lay.head); }
+    c.fillStyle='#2E353A'; c.fillRect(Math.round(x),lay.head,1,H-lay.head);
+    // the header: number, name, length; the current section in yellow; a pending switch outlined
+    c.fillStyle=isCur?'#2A2512':'#171B1E'; c.fillRect(x,0,w-1,lay.head-2); c.fillStyle='#F2C14E'; c.fillRect(Math.round(x),0,2,lay.head-2);
+    c.fillStyle=isCur?'#F2C14E':'#8C7A3E'; tlRound(c,x+6,6,18,18,4); c.fill(); c.fillStyle='#111'; c.font=`700 13px ${F}`; c.textAlign='center'; c.textBaseline='middle'; c.fillText(String(k+1),x+15,15.5);
+    const kept=s.layers.filter(l=>l.state==='accepted'&&!l.muted), onT=kept.length&&kept.every(l=>l.printed);
+    c.textAlign='left'; c.fillStyle=isCur?'#F3F0E6':'#AEB5B9'; c.font=`600 14px ${F}`; tlText(c,`${s.name} · ${s.bars} bar${s.bars>1?'s':''}`,x+29,15.5,w-(kept.length?50:36)); if(kept.length){ c.beginPath(); c.arc(x+w-9,15,4,0,7); if(onT){ c.fillStyle='#7BC99A'; c.fill(); } else { c.strokeStyle='#7BC99A'; c.lineWidth=1.5; c.stroke(); } }
+    if(E.next&&E.next.k===k){ c.setLineDash([4,3]); c.strokeStyle='#F2C14E'; c.lineWidth=1.5; c.strokeRect(x+1.5,1.5,w-4,lay.head-5); c.setLineDash([]); }
+    // the layers
+    for(const ln of lay.lanes){ const ls=s.layers.filter(l=>l.type===ln.t); if(!ls.length) continue;
+      if(ln.t==='drm'){ const rh=ln.h/6; ls.forEach(l=>{ c.globalAlpha=l.muted?0.25:l.state==='pending'?0.55:1; (l.hits||[]).forEach(([ph,i])=>{ c.fillStyle=PADC[i%6]; c.fillRect(x+ph/L*w,ln.y+i*rh+1.5,2,rh-3); }); }); c.globalAlpha=1;
+        if(ls.some(l=>l.state==='pending')) tlDash(c,x+2,ln.y+1,w-5,ln.h-3); continue; }
+      const rows=Math.min(4,ls.length), rh=ln.h/rows, col=ln.t==='gtr'?LANES[0][2]:LANES[1][2];
+      ls.forEach((l,j)=>{ const ry=ln.y+(j%rows)*rh, cy=ry+rh/2, amp=rh/2-3; c.globalAlpha=l.muted?0.25:l.state==='pending'?0.55:1; c.fillStyle=col;
+        if(l.type==='syn'&&l.nt&&l.nt.length){ let lo=127,hi=0; l.nt.forEach(n=>{ lo=Math.min(lo,n[2]); hi=Math.max(hi,n[2]); }); const span=Math.max(6,hi-lo+1), nh=Math.max(2,(rh-6)/span);
+          l.nt.forEach(([t0,d,m,v])=>{ const yy=ry+3+(hi-m)/span*(rh-6), x1=x+t0/L*w, ww=Math.max(2,d/L*w); c.globalAlpha=(l.muted?0.25:l.state==='pending'?0.55:1)*(0.45+0.55*Math.min(1,v||0.5)); c.fillRect(x1,yy,Math.min(ww,x+w-x1-1),Math.max(2,nh-1)); if(x1+ww>x+w) c.fillRect(x,yy,Math.min(w,x1+ww-x-w),Math.max(2,nh-1)); }); }
+        else if(l.env&&l.env.length){ const e=l.env, n=e.length, top=Math.max(...e,0.02); c.beginPath(); c.moveTo(x,cy); for(let i=0;i<n;i++) c.lineTo(x+(i+0.5)/n*w,cy-Math.max(0.5,e[i]/top*amp)); for(let i=n-1;i>=0;i--) c.lineTo(x+(i+0.5)/n*w,cy+Math.max(0.5,e[i]/top*amp)); c.closePath(); c.fill(); }
+        else { c.globalAlpha*=0.5; c.fillRect(x+2,ry+3,w-5,rh-6); }
+        c.globalAlpha=1; if(l.state==='pending') tlDash(c,x+2,ry+1,w-5,rh-3); if(l._busy||l._rendering){ c.fillStyle='#C9D2D6'; c.font=`600 12px ${F}`; tlText(c,l._rendering?'rendering…':'…',x+6,cy,w-12); } }); } }
+  // a first pass, growing at the end
+  if(lay.rec){ const {x,w}=lay.rec; c.fillStyle='rgba(255,106,94,0.16)'; c.fillRect(x,lay.head,w,H-lay.head); c.fillStyle='#3A1A18'; c.fillRect(x,0,w-1,lay.head-2); c.fillStyle='#FF6A5E'; c.font=`700 14px ${F}`; tlText(c,'● Rec',x+6,15.5,w-10); c.fillRect(x+w-2,0,2,H); }
+  // a new section
+  const p=lay.plus, nx=E.next&&E.next.newSec; c.setLineDash([4,4]); c.strokeStyle=nx?'#F2C14E':'#3A4247'; c.lineWidth=1.5; c.strokeRect(p.x+5.5,4.5,p.w-11,H-9); c.setLineDash([]); c.fillStyle=nx?'#F2C14E':'#6B747A'; c.font=`700 26px ${F}`; c.textAlign='center'; c.fillText('+',p.x+p.w/2,H/2); c.textAlign='left';
+  // a layer being recorded over the loop: red from where it started
+  if(E.rec&&!E.rec.first&&E.play&&ctx){ const col=lay.cols[E.play.k]; if(col){ const el=ctx.currentTime-E.rec.h0, L=E.play.L, a=phase(E.rec.h0,E.play.z,L)/L; c.fillStyle='rgba(255,106,94,0.18)';
+      if(el>=L) c.fillRect(col.x,lay.head,col.w,H-lay.head); else { const b=a+el/L; c.fillRect(col.x+a*col.w,lay.head,Math.min(b,1)*col.w-a*col.w,H-lay.head); if(b>1) c.fillRect(col.x,lay.head,(b-1)*col.w,H-lay.head); } } }
+  // the playhead
+  let px=null; if(E.play&&ctx&&ctx.currentTime>=E.play.z-0.05){ const col=lay.cols[E.play.k]; if(col) px=col.x+phase(ctx.currentTime,E.play.z,E.play.L)/E.play.L*col.w; }
+  else if(E.st==='tape'){ const f=E.tape&&E.tape.fit, pos=f&&f.n?(performance.now()-f.c)/1000:TP.pos!=null?TP.pos/1000:null; if(pos!=null){ const col=lay.cols.find(q=>pos>=q.s.s&&pos<q.s.s+q.s.L); if(col) px=col.x+(pos-col.s.s)/col.s.L*col.w; } }
+  if(px!=null){ c.fillStyle=E.st==='tape'?'#7BC99A':'#F2C14E'; c.fillRect(Math.round(px)-1,0,2,H); }
+  // keep the current section in view when it changes
+  if(cur!==TL.secShown){ TL.secShown=cur; const col=lay.cols[cur], sc=$('#tlsc'); if(col&&sc&&(col.x<sc.scrollLeft||col.x+col.w>sc.scrollLeft+TL.W)) sc.scrollLeft=Math.max(0,col.x-20); }
+  if(lay.rec){ const sc=$('#tlsc'); if(sc&&lay.rec.x+lay.rec.w>sc.scrollLeft+TL.W) sc.scrollLeft=lay.rec.x+lay.rec.w-TL.W+lay.plus.w; } }
+function tlRound(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function tlDash(c,x,y,w,h){ c.setLineDash([4,3]); c.strokeStyle='#F2C14E'; c.lineWidth=1; c.strokeRect(x+0.5,y+0.5,w,h); c.setLineDash([]); }
+function tlText(c,t,x,y,max){ c.textBaseline='middle'; if(max<12) return; let s=t; while(s.length>1&&c.measureText(s).width>max) s=s.slice(0,-2)+'…'; c.fillText(s,x,y); }
+// a tap on the timeline: a header picks the section (it plays next, or now when stopped); a lane opens the section's layers; + adds a section
+function tlTap(x,y){ const lay=TL.lay; if(!lay||!S.ses) return; initAudio();
+  if(x>=lay.plus.x&&x<lay.plus.x+lay.plus.w){ const n=S.ses.secs.length; if(!n) return; S.ses.cur=n-1; if(['loop','stopped'].includes(E.st)) act('next'); return; }
+  const col=lay.cols.find(q=>x>=q.x&&x<q.x+q.w); if(!col) return; const k=col.k;
+  if(y<lay.head) return secPick(k);
+  E.sheet=k; renderSheet(); }
+async function secPick(k){ const ses=S.ses; if(!ses) return; if(E.tmode==='tape'){ ses.cur=k; if(E.st==='tape') return tapePlay(k,!!E.tloop); renderAll(); return; }
+  if(E.st==='tape') await tapeStop();
+  if(E.st==='loop'){ if(E.next) return; if(E.play&&E.play.k!==k) return goSection(k); return; }
+  ses.cur=k; save(); renderAll(); }
+const gTxt=g=>g<=0.001?'off':`${g>=1?'+':''}${(20*Math.log10(g)).toFixed(1)} dB`;
+const TRK=[['gtr','Guitar','track 1'],['syn','Synth','track 2'],['drm','Drums','track 3']];
+function renderSheet(){ const sh=$('#sheet'), inn=$('#sheetIn'), k=E.sheet, sec=k!=null&&SEC(k); if(!sec){ sh.hidden=true; E.sheet=null; return; }
+  const ae=document.activeElement; if(!sh.hidden&&ae&&ae.type==='range'&&sh.contains(ae)) return; // not while a slider moves
+  const ses=S.ses; ses.tg=ses.tg||{gtr:1,syn:1,drm:1};
+  const groups=TRK.map(([t,n,tr])=>{ const ls=sec.layers.filter(l=>l.type===t); return `<div class="tgrp"><div class="row"><b class="lbl">${n} <span class="note">${tr} · whole song</span></b><input type="range" min="0" max="1.5" step="0.01" value="${ses.tg[t]}" data-tg="${t}" aria-label="${n}, whole song"><span class="gv" data-gv="t:${t}">${gTxt(ses.tg[t])}</span></div>
+    ${ls.length?ls.map((l,i)=>layerRow(l,k)+`<div class="row lvl"><span class="lbl note">Layer ${i+1} level</span><input type="range" min="0" max="1.5" step="0.01" value="${l.gain==null?1:l.gain}" data-lg="${l.id}" data-k="${k}" aria-label="${n} layer ${i+1} level"><span class="gv" data-gv="l:${l.id}">${gTxt(l.gain==null?1:l.gain)}</span></div>`).join(''):'<p class="note">No layers.</p>'}</div>`; }).join('');
+  inn.innerHTML=`<div class="hd"><h3>Section ${esc(sec.name)} · ${sec.bars} bar${sec.bars>1?'s':''} · ${bpmTxt(bpmOf(k))} bpm</h3><button type="button" class="btn" data-act="shClose">Close</button></div>
+    ${groups}
+    <div class="row"><button type="button" class="btn sm pri" data-act="loopApp" data-k="${k}">Loop here</button><button type="button" class="btn sm" data-act="tapePlay" data-k="${k}">▶ TP-7 from here</button><button type="button" class="btn sm" data-act="tapeLoop" data-k="${k}">Loop on TP-7</button></div>
+    <p class="note">${secSum(sec)}</p>`; sh.hidden=false; }
+function secSum(sec){ const onTape=sec.layers.filter(l=>l.printed).length, kept=sec.layers.filter(l=>l.state==='accepted'&&!l.printed).length, pend=sec.layers.filter(l=>l.state==='pending').length;
+  return `${onTape?`${onTape} on the TP-7`:'Nothing on the TP-7 yet'}${kept?` · ${kept} to print when you stop`:''}${pend?` · ${pend} to keep or drop`:''}.`; }
+
+// ------------------------------------------------------------------ Sounds: the pads, and the guitar's sound (strum to hear it)
+async function sndOpen(){ initAudio(); if(!ctx) return; try{ if(ctx.state!=='running') await ctx.resume(); }catch(e){} await openInput(); E.sndNote='';
+  if(S.src==='syn'&&S.sndPrev!==false&&['idle','ready','stopped','loop','first'].includes(E.st)){ if(!midiReady()) E.sndNote='Connect the TP-7 (Settings) to hear your guitar here.'; else { const e=await perfReady(); E.sndNote=e||''; } }
+  prevSync(); if(E.tab==='Snd') renderSnd(); }
+function renderSnd(){ const el=$('#pSnd'); if(!el) return; const s=S.synth, syn=S.src==='syn';
+  const pads=el.querySelector('.pads')?el.querySelector('.pads').outerHTML:`<div class="pads">${PADS.map((p,i)=>`<button type="button" class="pad" data-pad="${i}">${p}</button>`).join('')}</div>`;
+  el.innerHTML=`<div class="card"><h3>Drums</h3>${pads}
+    <div class="row"><select data-set="kit" aria-label="Kit">${Object.entries(KITS).map(([k,v])=>`<option value="${k}"${S.kit===k?' selected':''}>${v.name}</option>`).join('')}</select>
+    <select data-set="quant" aria-label="Snap hits"><option value="0"${!S.quant?' selected':''}>As played</option><option value="8"${S.quant===8?' selected':''}>Snap to 8ths</option><option value="16"${S.quant===16?' selected':''}>Snap to 16ths</option></select>
+    <button type="button" class="btn sm" data-act="padCal">${PADCAL.on?`Tap on the clicks (${PADCAL.hits.length} of 8)`:S.padFix==null?'Set pad timing':`Pad timing ${S.padFix} ms`}</button></div>
+    <p class="note">The pads sound as you tap. While switch 1 records, your taps become a drum layer (with your guitar too, if you play it).</p></div>
+  <div class="card"><h3>Guitar sound</h3>
+    <div class="snd" role="group" aria-label="Guitar sound"><button type="button" class="raw" data-src="gtr" aria-pressed="${!syn}">Raw</button>${Object.entries(G.PRESETS).map(([v,p])=>`<button type="button" data-src="syn" data-preset="${v}" aria-pressed="${syn&&s.preset===v}">${p.name}</button>`).join('')}</div>
+    <div class="row"><span class="lbl">Octave</span><select data-set="synth.oct" aria-label="Octave">${[-2,-1,0,1,2].map(o=>`<option value="${o}"${s.oct===o?' selected':''}>${o>0?'+':''}${o}</option>`).join('')}</select></div>
+    <div class="row"><span class="lbl">Synth layer level</span><input type="range" min="0.2" max="1" step="0.05" value="${s.level}" data-synlv="1" aria-label="Level of new synth layers"></div>
+    <div class="row"><span class="lbl">Snap to the loop's key</span><button type="button" class="btn sm" data-tog="synth.snap" aria-pressed="${!!s.snap}">${s.snap?'On':'Off'}</button></div>
+    <div class="row"><span class="lbl">Follow bends (glide)</span><button type="button" class="btn sm" data-tog="synth.glide" aria-pressed="${!!s.glide}">${s.glide?'On':'Off'}</button></div>
+    <div class="row"><span class="lbl">Hear it here as you strum</span><button type="button" class="btn sm" data-tog="sndPrev" aria-pressed="${S.sndPrev!==false}">${S.sndPrev!==false?'On':'Off'}</button></div>
+    <div class="row"><span class="lbl">Hear it while you record</span><button type="button" class="btn sm" data-tog="synth.preview" aria-pressed="${!!s.preview}">${s.preview?'On':'Off'}</button></div>
+    <div class="row"><span class="lbl">Guitar in</span><span class="meterbar" id="sndIn"><i></i></span></div>
+    <p class="note">${E.sndNote?esc(E.sndNote)+' ':''}${syn?(S.sndPrev!==false?`Strum: you hear the ${esc(G.PRESETS[s.preset].name)} synth about ${Math.round((RT()+0.03)*1000)} ms after your guitar (the round trip plus tracking). `:''):''}Switch 5 swaps raw and synth hands-free. A synth layer is worked out again from the whole take when you close it, and plays in time from the next round.</p></div>`; }
+
+function renderSet(){ const el=$('#pSet'); if(!el) return; const info=TP.info;
   el.innerHTML=`<div class="card"><h3>TP-7</h3><div class="row"><button type="button" class="btn pri" data-act="connect">Connect</button><span class="note" id="midiNote">${esc(R.note||'Not connected.')}</span></div>
     ${info?`<p class="note">${esc(info.product||'')} ${esc(info.sw_version||'')}</p>`:''}<p class="note">Audio: ${ctx?`${ctx.sampleRate} Hz, ${ctx.destination.maxChannelCount} output channel${ctx.destination.maxChannelCount>1?'s':''}, input ${IN.kind||'closed'}`:'not started'}. Round trip: ${S.ses&&S.ses.rt!=null?msTxt(S.ses.rt):'measured at each new session'}.</p>
     <p class="note">While you play, the TP-7 stands in ${stName(S.tp.stance)}${S.tp.stance==='normal'?' (pressing play on the TP-7 then would start a new recording)':''}. Diagnostics test 1 checks which stance lets you hear both your guitar and the app.</p></div>
-  <div class="card"><h3>Synth layers</h3>
-    <div class="row"><span class="lbl">Sound for new synth layers</span><select data-set="synth.preset">${Object.entries(G.PRESETS).map(([v,p])=>`<option value="${v}"${s.preset===v?' selected':''}>${p.name}</option>`).join('')}</select></div>
-    <div class="row"><span class="lbl">Octave</span><select data-set="synth.oct">${[-2,-1,0,1,2].map(o=>`<option value="${o}"${s.oct===o?' selected':''}>${o>0?'+':''}${o}</option>`).join('')}</select></div>
-    <div class="row"><span class="lbl">Hear the synth while you play</span><button type="button" class="btn sm" data-tog="synth.preview" aria-pressed="${!!s.preview}">${s.preview?'On':'Off'}</button></div>
-    <div class="row"><span class="lbl">Snap new layers to the loop's key</span><button type="button" class="btn sm" data-tog="synth.snap" aria-pressed="${!!s.snap}">${s.snap?'On':'Off'}</button></div>
-    <div class="row"><span class="lbl">Follow bends (glide)</span><button type="button" class="btn sm" data-tog="synth.glide" aria-pressed="${!!s.glide}">${s.glide?'On':'Off'}</button></div>
-    <p class="note">While you play a synth layer you hear your guitar from the TP-7, plus the synth if this is on (late by the round trip and about 20 ms of tracking). Once you close it, the layer is worked out again from the whole take and plays in time from then on.</p></div>
   <div class="card"><h3>Mix</h3>${[['metro','Metronome'],['loop','Loops'],['pads','Pads'],['prev','Synth while you play']].map(([k,n])=>`<div class="row"><span class="lbl">${n}</span><input type="range" min="0" max="1" step="0.05" value="${S.lv[k]}" data-lv="${k}" aria-label="${n}"></div>`).join('')}
     <div class="row"><span class="lbl">Metronome</span><button type="button" class="btn sm" data-tog="metroOn" aria-pressed="${!!S.metroOn}">${S.metroOn?'On':'Off'}</button></div></div>
   <div class="card"><h3>Looping</h3>
@@ -1220,26 +1364,34 @@ function renderSet(){ const el=$('#pSet'); if(!el) return; const s=S.synth, info
     <div class="row"><span class="lbl">Count-in before play</span><button type="button" class="btn sm" data-tog="countIn" aria-pressed="${!!S.countIn}">${S.countIn?'On':'Off'}</button></div>
     <p class="note">Off (the default): a loop is exactly as long as the time between your two presses, and its section's tempo moves to the nearest tempo that makes it whole bars. On: the loop starts and ends on the nearest bar line at the tempo you tapped. Play starts at once unless the count-in is on.</p></div>
   <div class="card"><h3>Layers</h3><div class="row"><span class="lbl">Print kept layers when you stop</span><button type="button" class="btn sm" data-tog="printOnStop" aria-pressed="${!!S.printOnStop}">${S.printOnStop?'On':'Off'}</button></div>
-    <div class="row"><span class="lbl">Keep every new layer without asking</span><button type="button" class="btn sm" data-tog="autoAccept" aria-pressed="${!!S.autoAccept}">${S.autoAccept?'On':'Off'}</button></div></div>
-  <div class="card"><h3>Footswitch</h3><p class="note">AirTurn in mode 2 (keyboard): 1 guitar layer (tap on, tap off; closes a first pass), 2 play/stop (in the first bar of a first pass it cancels it), 3 previous section, 4 next section (at the end of this time round; from the last one it records a new section), 5 synth layer, 6 keep the newest layer, double tap 6 to drop it. With nothing to keep, four steady taps of 6 start a new session at that tempo.</p></div>
+    <div class="row"><span class="lbl">Keep every new layer without asking</span><button type="button" class="btn sm" data-tog="autoAccept" aria-pressed="${!!S.autoAccept}">${S.autoAccept?'On':'Off'}</button></div>
+    <div class="row"><button type="button" class="btn" data-act="printNow">Print kept layers now${toPrint().length?` (${toPrint().length})`:''}</button><button type="button" class="btn" data-act="tapeStop">Stop the TP-7</button></div></div>
+  <div class="card"><h3>Footswitch</h3><p class="note">AirTurn in mode 2 (keyboard): 1 record a loop, whatever you play (guitar, pads or both; tap on, tap off; it also closes a new section), 2 play/stop (in the first half bar of a first pass it cancels it), 3 previous section, 4 next section (at the end of this time round; from the last one it records a new section), 5 your guitar's sound: raw or the synth chosen in Sounds, 6 keep the newest pass, double tap 6 to drop it. With nothing to keep, four steady taps of 6 start a new session at that tempo.</p></div>
   <div class="card"><h3>Tests and log</h3><div class="row"><button type="button" class="btn pri" data-act="diag">Diagnostics</button><button type="button" class="btn" data-act="copyLog">Copy log</button></div>
     <p class="note">Build ${APP_BUILD}.</p><div class="row"><button type="button" class="btn sm" data-act="endSes">End this session</button></div></div>`; }
 
+
 // ------------------------------------------------------------------ taps on the screen
-document.addEventListener('pointerdown',e=>{ const b=e.target.closest&&e.target.closest('[data-sw],[data-pad]'); if(!b) return; e.preventDefault();
-  if(b.dataset.sw!=null) sw(+b.dataset.sw,e,'screen'); else { b.classList.add('hit'); setTimeout(()=>b.classList.remove('hit'),90); padHit(+b.dataset.pad,e); } },{passive:false});
-document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.closest('[data-act],[data-lact],[data-tog],[data-tab]'); if(!t) return; initAudio();
+// a tap outside the section sheet closes it
+document.addEventListener('pointerdown',e=>{ if(E.sheet==null) return; const sh=$('#sheet'); if(sh&&!sh.contains(e.target)){ E.sheet=null; sh.hidden=true; } },true);
+document.addEventListener('pointerdown',e=>{ const b=e.target.closest&&e.target.closest('[data-pad]'); if(!b) return; e.preventDefault(); b.classList.add('hit'); setTimeout(()=>b.classList.remove('hit'),90); padHit(+b.dataset.pad,e); },{passive:false});
+document.addEventListener('click',async e=>{ const t=e.target.closest&&e.target.closest('[data-act],[data-lact],[data-tog],[data-tab],[data-src]'); if(!t) return; initAudio();
   if(t.dataset.tab) return showTab(t.dataset.tab);
-  if(t.dataset.tog){ const p=t.dataset.tog.split('.'); const o=p.length>1?S[p[0]]:S; o[p[p.length-1]]=!o[p[p.length-1]]; save(); if(t.dataset.tog==='metroOn'&&S.metroOn&&S.ses&&!CLK.on&&E.st==='ready') clkStart(clkFirst()); renderAll(); return; }
+  if(t.dataset.src){ S.src=t.dataset.src; if(t.dataset.preset) S.synth.preset=t.dataset.preset; save(); if(S.src==='syn') sndOpen(); else prevSync(); renderAll(); return; }
+  if(t.dataset.tog){ const p=t.dataset.tog.split('.'); const o=p.length>1?S[p[0]]:S; o[p[p.length-1]]=o[p[p.length-1]]===false?true:!o[p[p.length-1]]; save(); if(t.dataset.tog==='metroOn'&&S.metroOn&&S.ses&&!CLK.on&&E.st==='ready') clkStart(clkFirst()); if(t.dataset.tog==='sndPrev'&&S.sndPrev) sndOpen(); else prevSync(); renderAll(); return; }
   if(t.dataset.lact){ const k=+t.dataset.k, sec=SEC(k), l=sec&&sec.layers.find(x=>x.id===t.dataset.id); if(!l) return; const x={l,k};
     if(t.dataset.lact==='keep') accept(x); else if(t.dataset.lact==='drop') dismiss(x); else if(t.dataset.lact==='mute'){ l.muted=!l.muted; layerGain(l); save(); renderAll(); } return; }
   const a=t.dataset.act, k=t.dataset.k!=null?+t.dataset.k:null;
   if(a==='connect'){ await midiConnect(); if(midiReady()&&R.sysex){ const m=await sxAlive(); setMidiNote(m?`TP-7 answers (${m} mode).`:'The TP-7 does not answer SysEx. Check the cable and the MIDI setting (cue).'); } await openInput(); renderAll(); return; }
   if(a==='newSes') return prepSession(TAP.bpm||(S.ses?S.ses.bpm:100));
-  if(a==='drm') return act('drm',e);
+  if(a==='tMode'){ const m=t.dataset.m; if(m===(E.tmode||'app')) return; if(m==='app'&&E.st==='tape') await tapeStop(); if(m==='tape'&&['loop','first'].includes(E.st)) await stopAll(false); E.tmode=m; renderAll(); return; }
+  if(a==='tPlay'){ if(E.tmode==='tape'){ if(E.st==='tape') return tapeStop(); const k=S.ses?S.ses.cur||0:0; return tapePlay(k,!!E.tloop); } if(E.st==='tape'){ await tapeStop(); return; } return act('play',e); }
+  if(a==='tPrev'||a==='tNext'){ if(E.tmode==='tape'){ const ses=S.ses; if(!ses||!ses.secs.length) return; const k=clamp((ses.cur||0)+(a==='tNext'?1:-1),0,ses.secs.length-1); ses.cur=k; if(E.st==='tape') return tapePlay(k,!!E.tloop); renderAll(); return; } return act(a==='tNext'?'next':'prev',e); }
+  if(a==='tLoop'){ E.tloop=!E.tloop; if(E.st==='tape'&&S.ses) return tapePlay(S.ses.cur||0,E.tloop); renderAll(); return; }
+  if(a==='shClose'){ E.sheet=null; $('#sheet').hidden=true; return; }
   if(a==='padCal') return padCalStart();
-  if(a==='loopApp'){ if(E.st==='tape') await tapeStop(); if(E.st==='loop'&&E.play&&E.play.k!==k) return goSection(k); if(E.st==='stopped') return playFrom(k); return; }
-  if(a==='tapePlay'||a==='tapeLoop'){ S.ses.cur=k; return tapePlay(k,a==='tapeLoop'); }
+  if(a==='loopApp'){ E.tmode='app'; E.sheet=null; $('#sheet').hidden=true; if(E.st==='tape') await tapeStop(); if(E.st==='loop'&&E.play&&E.play.k!==k) return goSection(k); if(E.st==='stopped') return playFrom(k); return; }
+  if(a==='tapePlay'||a==='tapeLoop'){ S.ses.cur=k; E.tmode='tape'; E.tloop=a==='tapeLoop'; E.sheet=null; $('#sheet').hidden=true; return tapePlay(k,a==='tapeLoop'); }
   if(a==='tapeStop') return tapeStop();
   if(a==='printNow'){ if(E.st==='loop'||E.st==='first') await stopAll(true); return printAll(); }
   if(a==='diag') return diagOpen();
@@ -1249,10 +1401,14 @@ document.addEventListener('change',e=>{ const t=e.target;
   if(t.dataset.set){ const p=t.dataset.set.split('.'), v=/^-?\d+$/.test(t.value)?+t.value:t.value; if(p.length>1) S[p[0]][p[1]]=v; else S[p[0]]=v; save(); renderAll(); return; }
   if(t.dataset.lset){ const k=+t.dataset.k, sec=SEC(k), l=sec&&sec.layers.find(x=>x.id===t.dataset.id); if(!l) return; l[t.dataset.lset]=t.dataset.lset==='oct'?+t.value:t.value; save(); synthLayer(l,k); renderAll(); } });
 document.addEventListener('click',e=>{ const t=e.target.closest&&e.target.closest('[data-lset="snap"]'); if(!t) return; const k=+t.dataset.k, sec=SEC(k), l=sec&&sec.layers.find(x=>x.id===t.dataset.id); if(!l) return; l.snap=!l.snap; save(); synthLayer(l,k); renderAll(); });
-document.addEventListener('input',e=>{ const t=e.target; if(!t.dataset.lv) return; S.lv[t.dataset.lv]=+t.value; save(); if(ctx){ const n={metro:A.metro,loop:A.loop,pads:A.pads,prev:A.prev}[t.dataset.lv]; if(n) n.gain.setTargetAtTime(+t.value,ctx.currentTime,0.02); } });
+document.addEventListener('input',e=>{ const t=e.target; if(t.dataset.synlv){ S.synth.level=+t.value; save(); return; }
+  if(t.dataset.lg){ const sec=SEC(+t.dataset.k), l=sec&&sec.layers.find(x=>x.id===t.dataset.lg); if(!l) return; l.gain=+t.value; layerGain(l); save(); const v=document.querySelector(`[data-gv="l:${l.id}"]`); if(v) v.textContent=gTxt(l.gain); return; }
+  if(t.dataset.tg){ const ty=t.dataset.tg; S.ses.tg=S.ses.tg||{gtr:1,syn:1,drm:1}; S.ses.tg[ty]=+t.value; S.ses.secs.forEach(sec=>sec.layers.forEach(l=>{ if(l.type===ty) layerGain(l); })); save(); const v=document.querySelector(`[data-gv="t:${ty}"]`); if(v) v.textContent=gTxt(S.ses.tg[ty]); return; }
+  if(!t.dataset.lv) return; S.lv[t.dataset.lv]=+t.value; save(); if(ctx){ const n={metro:A.metro,loop:A.loop,pads:A.pads,prev:A.prev}[t.dataset.lv]; if(n) n.gain.setTargetAtTime(+t.value,ctx.currentTime,0.02); } });
 function confirmTap(el,msg){ if(el._armed){ el._armed=false; return true; } el._armed=true; toast(msg); setTimeout(()=>{ el._armed=false; },3000); return false; }
 async function copyText(txt,what){ try{ await navigator.clipboard.writeText(txt); toast(what+' copied. Paste it into our chat.'); }
   catch(e){ let ta=$('#copyTa'); if(!ta){ ta=document.createElement('textarea'); ta.id='copyTa'; ta.className='copy'; (($('#diag')&&!$('#diag').hidden)?$('#diag .wrap'):$('#pSet')).appendChild(ta); } ta.value=txt; ta.focus(); ta.select(); toast('Select the text below and copy it.'); } }
+
 
 // ================================================================== diagnostics: what this design rests on, tested on your TP-7
 const DG={run:null,res:{},sx:{}};
@@ -1261,7 +1417,8 @@ function diagClose(){ const d=$('#diag'); if(d) d.hidden=true; banner(''); }
 const TESTS=[
   {id:'t1',name:'1. Hearing the app while you play',time:'about 2 minutes, your guitar',desc:'Build 1 found that with the TP-7 armed in edit mode you hear your guitar but not the app. This tries normal mode, armed (the new default), and edit mode only if normal mode fails: does your guitar reach the app, do you hear it, do you hear the app? Then the round trip and how the live synth feels. The stance that works is kept.'},
   {id:'t2',name:'2. Printing to the TP-7',time:'about 2 minutes, automatic',desc:'Makes a test session at 120 bpm (a new TP-7 recording), prints click layers in three passes onto track 1, then plays the recording back and listens: do the passes line up, where do they land, do the cues jump right, and does the TP-7 loop a section cleanly. Your current session ends.'},
-  {id:'t3',name:'3. Your first loop, start to finish',time:'about 3 minutes, your guitar and footswitch',desc:'A real session with prompts: four taps for the tempo, a guitar loop, a synth layer, keep both, stop, the print, then the TP-7 plays it back. You say how each step sounded. Run it after test 1 has passed.'}];
+  {id:'t3',name:'3. Your first loop, start to finish',time:'about 3 minutes, your guitar and footswitch',desc:'A real session with prompts: four taps for the tempo, a guitar loop, a synth layer, keep both, stop, the print, then the TP-7 plays it back. You say how each step sounded. Run it after test 1 has passed.'},
+  {id:'t4',name:'4. Sending the song: per track or in one pass',time:'about 4 minutes, automatic, one hand step on the TP-7',desc:'Compares three ways to get a song onto the TP-7, with guitar on track 1, synth on track 2 and drums on track 3 (two layers each, two sections). A: the current way, one pass per section and track. C: synth and drums in one new recording (USB 1 and 2), then the guitar in one pass. B: all three tracks in one new recording, which needs the record sources set to USB 1, USB 2 and USB 3 for that run. For each: the time it takes and where every track lands, from the playback. Keep your guitar quiet. Your current session ends.'}];
 function diagRender(){ const d=$('#diag'); if(!d||d.hidden) return;
   d.innerHTML=`<div class="wrap"><div class="row"><h2 style="flex:1">Diagnostics <small class="note">build ${APP_BUILD}</small></h2><button type="button" class="btn" data-dg="close">Close</button></div>
   <p class="note">Before you start: TP-7 connected by USB-C, Connect done in Settings, record sources line 1, USB 1 and USB 2, MIDI setting cue. The prompts show at the bottom of the screen; answer with the footswitch or the buttons that appear.</p>
@@ -1282,7 +1439,7 @@ function ask(main,opts){ banner(main,opts.map((o,i)=>`switch ${i+1}: ${o}`).join
 const dgLine=(id,s)=>{ (DG.res[id]=DG.res[id]||[]).push(s); log('test',s); diagRender(); };
 async function countdown(main,sub,sec){ for(let i=sec;i>0;i--){ if(DG.stop) return false; banner(main,sub,`${i}`); await sleep(1000); } banner(''); return !DG.stop; }
 async function runTest(id){ DG.run=id; DG.stop=false; DG.res[id]=[]; DG.sx[id]=TP.sxlog=[]; diagRender(); log('app',`test ${id} started, build ${APP_BUILD}`);
-  try{ await ({t1,t2,t3})[id](); }catch(err){ dgLine(id,'✗ error: '+(err&&err.stack||err)); }
+  try{ await ({t1,t2,t3,t4})[id](); }catch(err){ dgLine(id,'✗ error: '+(err&&err.stack||err)); }
   TP.sxlog=null; DG.run=null; banner(''); PED.gate=null; DG.ans=null; diagRender(); }
 async function dgBasics(id){ initAudio(); const e=tpProblem(); if(e){ dgLine(id,'✗ '+e); return false; }
   const m=await sxAlive(); if(!m){ dgLine(id,'✗ The TP-7 does not answer over SysEx.'); return false; }
@@ -1337,8 +1494,8 @@ async function t1(){ const id='t1'; if(!(await dgBasics(id))) return; await stop
   dgLine(id,'Done.'); }
 
 // ------------------------------------------------------------------ test 2
-function clickLayer(beats,f,L){ const sr=ctx.sampleRate, N=Math.round(L*sr), y=new Float32Array(N), b=beatS(), n=Math.round(0.004*sr);
-  for(const k of beats){ const i0=Math.round(k*b*sr); for(let j=0;j<n&&i0+j<N;j++) y[i0+j]+=0.5*Math.sin(2*Math.PI*f*j/sr)*(j<n-24?1:(n-j)/24); } return y; }
+function clickLayer(beats,f,L,off){ const sr=ctx.sampleRate, N=Math.round(L*sr), y=new Float32Array(N), b=beatS(), n=Math.round(0.004*sr);
+  for(const k of beats){ const i0=Math.round((k*b+(off||0))*sr); for(let j=0;j<n&&i0+j<N;j++) y[i0+j]+=0.5*Math.sin(2*Math.PI*f*j/sr)*(j<n-24?1:(n-j)/24); } return y; }
 // a click's pitch (1, 1.5 or 2 kHz in test 2): the strongest of the three by Goertzel over its 4 ms
 function clickHz(t){ const x=inSlice(t-0.0005,t+0.0045); if(!x) return 0; let best=0, bf=0;
   for(const f of [1000,1500,2000]){ const w=2*Math.PI*f/IN.sr, c=2*Math.cos(w); let s1=0,s2=0; for(let i=0;i<x.length;i++){ const s0=x[i]+c*s1-s2; s2=s1; s1=s0; } const p=s1*s1+s2*s2-c*s1*s2; if(p>best){ best=p; bf=f; } } return bf; }
@@ -1386,6 +1543,100 @@ async function t2(){ const id='t2'; if(!(await dgBasics(id))) return; dgLine(id,
     dgLine(id,c2?`· ▶ TP-7 from B (its cue, ${(ses.secs[1].s-ses.cues[1]).toFixed(1)} s before it): B's start came back ${Math.round((c2.t-g2-beatS())*1000)} ms after the button, including the input delay (build 2: about 1.9 s)`:'✗ ▶ TP-7 from B: none of B\'s clicks came back'); }
   await perfReady(); dgLine(id,'Done. The test session stays loaded; tap switch 6 four times for a real one.'); }
 
+// ------------------------------------------------------------------ test 4: sending the song, per track (A) or in one pass (C, B)
+// The test song: sections A and B, 2 bars at 120 bpm; on every track two layers (beats 1, 3, 5, 7 and 2, 4, 6, 8), so each track has a
+// click on every beat. The tracks differ in pitch (guitar 1 kHz, synth 1.5 kHz, drums 2 kHz) and sit 0, 125 and 250 ms after the beat,
+// so one playback tells them apart even if the USB return mixes them.
+const T4F={gtr:1000,syn:1500,drm:2000}, T4O={gtr:0,syn:0.125,drm:0.25}, T4N={gtr:'guitar (track 1)',syn:'synth (track 2)',drm:'drums (track 3)'};
+function t4Song(){ const ses=S.ses, L=2*barS(), sr=ctx.sampleRate; ses.tg={gtr:1,syn:1,drm:1};
+  ses.secs=[0,1].map(k=>({id:uid(),name:LETTERS[k],bars:2,L,s:TAPE0+k*L,bpm:ses.bpm,layers:[]}));
+  for(const sec of ses.secs) for(const t of ['gtr','syn','drm']) for(const beats of [[0,2,4,6],[1,3,5,7]]){ const l=newLayer(t); l.state='accepted'; l.gain=1; const y=clickLayer(beats,T4F[t],L,T4O[t]);
+    E.bufs.set(l.id,mkBuf(y,Math.round(L*sr))); l.env=envOf(y,160); if(t==='drm') l.hits=beats.map(b=>[b*beatS()+T4O[t],1,0.9]); sec.layers.push(l); }
+  ses.cues={}; ses.cur=0; save(); renderAll(); return L; }
+// one track's layers as a single buffer from section A's start, each section at its place (turned down as a whole if it would clip)
+async function stemOf(t){ const secs=S.ses.secs; for(let k=0;k<secs.length;k++) await ensureBufs(k); const sr=ctx.sampleRate, s0=secs[0].s, end=secs.reduce((a,x)=>Math.max(a,x.s+x.L),0), N=Math.round((end-s0)*sr)+1, y=new Float32Array(N); let any=false;
+  for(const sec of secs){ const o=Math.round((sec.s-s0)*sr), M=Math.round(sec.L*sr); for(const l of sec.layers){ if(l.type!==t||l.state!=='accepted') continue; const b=E.bufs.get(l.id); if(!b) continue; any=true; const d=b.getChannelData(0), g=gainOf(l), K=d.length;
+      if(K===M) for(let i=0;i<M&&o+i<N;i++) y[o+i]+=d[i]*g; else for(let i=0;i<M&&o+i<N;i++) y[o+i]+=d[Math.min(K-1,Math.floor(i*K/M))]*g; } }
+  let pk=0; for(let i=0;i<N;i++){ const a=y[i]<0?-y[i]:y[i]; if(a>pk) pk=a; } if(pk>0.78){ const g=0.78/pk; for(let i=0;i<N;i++) y[i]*=g; }
+  return any?{t,y,pk,len:(N-1)/sr}:null; }
+// the app's output as three USB pairs (USB 1 = channels 1-2, USB 2 = 3-4, USB 3 = 5-6), each stem on both channels of its pair
+function multiOut(){ const d=ctx.destination; if(d.maxChannelCount<6) return null; const was={c:d.channelCount,i:d.channelInterpretation};
+  try{ d.channelCount=6; d.channelInterpretation='discrete'; const mg=ctx.createChannelMerger(6); mg.connect(d); const g=[0,1,2].map(p=>{ const n=ctx.createGain(); n.connect(mg,0,2*p); n.connect(mg,0,2*p+1); return n; }); return {was,mg,g}; }catch(e){ log('err','6 outputs: '+(e&&e.message||e)); return null; } }
+function multiOutEnd(o){ if(!o) return; try{ o.g.forEach(n=>n.disconnect()); o.mg.disconnect(); const d=ctx.destination; d.channelCount=o.was.c; d.channelInterpretation=o.was.i; }catch(e){} }
+// C and B: a new TP-7 recording in normal mode, with stems on USB pairs (routes [[stem, pair]]), timed by the position reports before section A
+async function sendOnePass(routes,lenS){ await tpUnperform(); mNow([0xB0,17,0]); mNow(sxMsg(SXOP.stop)); await sleep(150);
+  const ed=await tpSetEdit(false); if(ed.after!==0xff) return {err:'Normal mode did not come on.'};
+  const out=multiOut(); if(!out) return {err:'The phone gives the app fewer than 6 output channels.'};
+  try{ if(!(await tpArm(true))) return {err:'The TP-7 did not arm.'}; const P0=await startPass(), tag='send';
+    if(!(await waitFor(()=>posFit(P0,0).n>=3,4000,10))){ mNow(sxMsg(SXOP.stop)); mNow([0xB0,14,0]); return {err:'No position reports while recording.'}; }
+    await waitFor(()=>{ const f=posFit(P0,0); return f.n>=8||f.c+TAPE0*1000-performance.now()<300; },3000,10);
+    const fit=posFit(P0,0), tP=p=>fit.c+p*1000, g0=p2h(tP(TAPE0)+(S.tp.printFix||0)); if(g0<ctx.currentTime+0.04){ mNow(sxMsg(SXOP.stop)); mNow([0xB0,14,0]); return {err:'Too little lead-in before section A.'}; }
+    for(const [st,pair] of routes){ const src=ctx.createBufferSource(); src.buffer=mkBuf(st.y,st.y.length); src.connect(out.g[pair]); src.start(g0); }
+    const offP=TAPE0+lenS+0.25; midiSendPerf(sxMsg(SXOP.stop),tP(offP),tag); midiSendPerf([0xB0,14,0],tP(offP)+50,tag);
+    await sleep(Math.max(0,tP(offP)+400-performance.now())); await waitFor(()=>TP.arm&&TP.arm.v===0,800,10);
+    const f=await tpFileNow(); return {fit,file:f}; }
+  finally{ multiOutEnd(out); } }
+// C's second pass: one stem onto one track in edit mode from USB 1, from the start: an unarmed run-up for the reports, armed just before A
+async function sendTrackPass(st,track,lenS){ await tpUnperform(); mNow([0xB0,17,0]); mNow(sxMsg(SXOP.stop)); await sleep(150);
+  const r=await tpEditTo(track,TPIN.usb1); if(r) return {err:r}; if(!(await tpToStart())) return {err:'The tape did not go back to the start.'};
+  const P0=await startPass(), tag='send'; if(!(await waitFor(()=>posFit(P0,0).n>=3,4000,10))){ mNow(sxMsg(SXOP.stop)); return {err:'No position reports.'}; }
+  await waitFor(()=>{ const f=posFit(P0,0); return f.n>=8||f.c+TAPE0*1000-performance.now()<300; },3000,10);
+  const fit=posFit(P0,0), tP=p=>fit.c+p*1000, g0=p2h(tP(TAPE0)+(S.tp.printFix||0)); if(g0<ctx.currentTime+0.04){ mNow(sxMsg(SXOP.stop)); return {err:'Too little lead-in before section A.'}; }
+  midiSendPerf([0xB0,14,127],tP(TAPE0-0.15),tag); const src=ctx.createBufferSource(); src.buffer=mkBuf(st.y,st.y.length); src.connect(A.print); src.start(g0);
+  const offP=TAPE0+lenS+0.25; midiSendPerf([0xB0,14,0],tP(offP),tag); midiSendPerf(sxMsg(SXOP.stop),tP(offP+0.3),tag);
+  await sleep(Math.max(0,tP(offP+0.6)-performance.now())); if(!(await waitFor(()=>TP.arm&&TP.arm.v===0,800,10))){ mNow([0xB0,14,0]); await sleep(200); } return {fit}; }
+// play the recording from the start (edit mode, the given track selected, not armed) and place every click of every track by the reports
+async function t4Play(track,lenS){ await tpUnperform(); await tpEditTo(track,TPIN.line1); await tpToStart(); const P0=performance.now(), g0=ctx.currentTime; mNow(sxMsg(SXOP.play));
+  await sleep((TAPE0+lenS+0.8)*1000); mNow(sxMsg(SXOP.stop)); const fit=posFit(P0,0), ts=clicksIn(g0,ctx.currentTime-0.1); if(!fit.n) return null;
+  const cl=ts.map(t=>({p:(h2p(t-RT())-fit.c)/1000,f:clickHz(t)})), res={};
+  for(const t of ['gtr','syn','drm']){ const offs=[]; for(const sec of S.ses.secs) for(let b=0;b<8;b++){ const want=sec.s+b*sec.L/8+T4O[t], c=cl.find(c=>c.f===T4F[t]&&Math.abs(c.p-want)<0.06); if(c) offs.push(c.p-want); }
+    res[t]={n:offs.length,of:8*S.ses.secs.length,med:offs.length?medOf(offs):null,sp:offs.length?Math.max(...offs)-Math.min(...offs):null}; }
+  return {res,heard:ts.length,width:fit.width}; }
+// listen to one run: the first time also finds out what the USB return carries (all tracks, the selected one, or track 1 only)
+async function t4Listen(id,lenS){ const out={}; const take=(r,ts)=>ts.forEach(t=>{ if(r&&r.res[t].n) out[t]=r.res[t]; });
+  banner('Listen: the TP-7 plays it back','Guitar low, synth middle, drums high: three clicks on every beat.'); const r1=await t4Play(0,lenS); banner(''); if(!r1){ dgLine(id,'  ✗ no position reports during playback'); return out; }
+  if(DG.ret==null){ if(r1.res.syn.n||r1.res.drm.n) DG.ret='mix'; else { const r2=await t4Play(1,lenS); DG.ret=r2&&r2.res.syn.n?'selected':'track1'; take(r2,['syn']); }
+    dgLine(id,`  · the app hears ${DG.ret==='mix'?'every track at once':DG.ret==='selected'?'the selected track':'track 1 only'} when the TP-7 plays back${DG.ret==='track1'?' (tracks 2 and 3 cannot be measured; listen to them)':''}`); }
+  take(r1,DG.ret==='mix'?['gtr','syn','drm']:['gtr']);
+  if(DG.ret==='selected'){ for(const [tr,t] of [[1,'syn'],[2,'drm']]) if(!out[t]){ const r=await t4Play(tr,lenS); take(r,[t]); } }
+  // the app cannot hear tracks 2 and 3: your ears instead
+  if(DG.ret==='track1'){ const q=await ask('How did that playback sound?',['three clicks on every beat','some missing','uneven or doubled','did not hear it']); dgLine(id,`  · by ear: ${['three clicks on every beat','some missing','uneven or doubled','not heard'][q]||'no answer'}`); out.ear=q; }
+  for(const t of ['gtr','syn','drm']){ const r=out[t]; if(r) dgLine(id,`  ${r.n===r.of?'✓':'✗'} ${T4N[t]}: ${r.n} of ${r.of} clicks, ${(r.med*1000).toFixed(1)} ms from where the reports place them (spread ${(r.sp*1000).toFixed(1)} ms)`);
+    else if(DG.ret!=='track1'||t==='gtr') dgLine(id,`  ✗ ${T4N[t]}: none of its clicks heard`); }
+  if(out.gtr&&out.syn) dgLine(id,`  · synth against guitar: ${((out.syn.med-out.gtr.med)*1000).toFixed(1)} ms${DG.ret==='selected'?' (separate playbacks, each placed by its own reports)':''}`);
+  if(out.gtr&&out.drm) dgLine(id,`  · drums against guitar: ${((out.drm.med-out.gtr.med)*1000).toFixed(1)} ms${DG.ret==='selected'?' (separate playbacks)':''}`);
+  return out; }
+async function t4(){ const id='t4'; if(!(await dgBasics(id))) return; const ch=ctx.destination.maxChannelCount;
+  if(ch<6){ dgLine(id,`✗ The phone gives the app ${ch} output channel${ch>1?'s':''}; synth and drums on USB 2 and 3 need 6. Open GarageBand once with the TP-7 connected (24 Oct), come back, reload and run this again.`); return; }
+  banner('Keep your guitar quiet','The test plays clicks; it needs about 4 minutes.'); await sleep(1500); banner('');
+  dgLine(id,'· a test session at 120 bpm (a new TP-7 recording)…'); if(E.st==='prep') await waitFor(()=>E.st!=='prep',30000); await prepSession(120,null);
+  if(E.st!=='ready'||!S.ses||S.ses.bpm!==120){ dgLine(id,'✗ session: '+E.msg); return; } clkStop(); const L=t4Song(), lenS=2*L; E.st='stopped'; DG.ret=null; const sum=[];
+  dgLine(id,`✓ test song: sections A and B, ${lenS.toFixed(1)} s, two layers on each of tracks 1 to 3`);
+  // A: the current way
+  dgLine(id,'Run A, the current way: one pass per section and track (6 passes)'); let t0=performance.now(); await printAll(); const dA=(performance.now()-t0)/1000;
+  if(toPrint().length){ dgLine(id,`  ✗ not all sent: ${E.msg}`); } else { dgLine(id,`  ✓ sent in ${dA.toFixed(1)} s`); sum.push(['A',dA,await t4Listen(id,lenS)]); }
+  if(DG.stop) return;
+  const st={gtr:await stemOf('gtr'),syn:await stemOf('syn'),drm:await stemOf('drm')};
+  // C: synth and drums in one new recording (line 1 records on track 1 meanwhile), then the guitar onto track 1 in edit mode
+  dgLine(id,'Run C, two passes: synth and drums in one new recording (USB 1 and 2, record sources as now), then the guitar onto track 1'); t0=performance.now();
+  let r=await sendOnePass([[st.syn,0],[st.drm,1]],lenS); if(r.err){ dgLine(id,'  ✗ '+r.err); }
+  else { dgLine(id,`  · new recording: ${fileTxt(r.file)}, timing within ${r.fit.width!=null?r.fit.width.toFixed(1)+' ms':'?'} (${r.fit.n} reports)`); const r2=await sendTrackPass(st.gtr,0,lenS);
+    if(r2.err) dgLine(id,'  ✗ guitar pass: '+r2.err); else { const dC=(performance.now()-t0)/1000; dgLine(id,`  ✓ sent in ${dC.toFixed(1)} s`); S.ses.file=r.file||S.ses.file; S.ses.fileEnd=TAPE0+lenS+0.25; S.ses.cues={}; sum.push(['C',dC,await t4Listen(id,lenS)]); } }
+  if(DG.stop) return;
+  // B: all three tracks at once, which needs the record sources USB 1, USB 2, USB 3 (set by hand)
+  const a=await ask('Run B: on the TP-7, set the record sources to USB 1, USB 2 and USB 3 (line 1 off)',['done','skip run B']);
+  if(a===0){ dgLine(id,'Run B, one pass: guitar, synth and drums in one new recording (USB 1, 2 and 3)'); t0=performance.now();
+    r=await sendOnePass([[st.gtr,0],[st.syn,1],[st.drm,2]],lenS); if(r.err) dgLine(id,'  ✗ '+r.err);
+    else { const dB_=(performance.now()-t0)/1000; dgLine(id,`  ✓ sent in ${dB_.toFixed(1)} s; new recording: ${fileTxt(r.file)}, timing within ${r.fit.width!=null?r.fit.width.toFixed(1)+' ms':'?'} (${r.fit.n} reports)`);
+      S.ses.file=r.file||S.ses.file; S.ses.fileEnd=TAPE0+lenS+0.25; S.ses.cues={}; const o=await t4Listen(id,lenS); sum.push(['B',dB_,o]); if(!o.gtr) dgLine(id,'  · no guitar on track 1: were the record sources USB 1, USB 2 and USB 3?'); } }
+  else dgLine(id,'Run B skipped');
+  if(a>=0) await ask('Set the record sources back to line 1, USB 1 and USB 2 (your guitar needs line 1 to reach the app)',['done']);
+  // side by side
+  dgLine(id,'Summary:'); for(const [n,d,o] of sum){ const sp=['syn','drm'].filter(t=>o[t]&&o.gtr).map(t=>`${t==='syn'?'synth':'drums'} ${((o[t].med-o.gtr.med)*1000).toFixed(1)} ms`).join(', ');
+    dgLine(id,`  ${n}: ${d.toFixed(1)} s; guitar ${o.gtr?(o.gtr.med*1000).toFixed(1)+' ms':'?'} from the reports${sp?`; against the guitar: ${sp}`:''}${o.ear!=null&&o.ear>=0?`; by ear: ${['three clicks on every beat','some missing','uneven or doubled','not heard'][o.ear]}`:''}`); }
+  dgLine(id,'  · A and C need no hand steps; B needs the record sources switched to USB 1 to 3 and back each time.');
+  S.ses.secs.forEach(sec=>sec.layers.forEach(l=>{ l.printed=true; })); save(); await perfReady(); dgLine(id,'Done. The test session stays loaded; tap switch 6 four times for a real one.'); }
+
 // ------------------------------------------------------------------ test 3: a real loop, start to finish, with your footswitch
 async function stepWait(main,sub,fn,ms){ banner(main,sub); const ok=await waitFor(()=>DG.stop||fn(),ms||60000,50); banner(''); return ok&&!DG.stop; }
 async function t3(){ const id='t3'; if(!(await dgBasics(id))) return; await stopAll(true); diagHide(true);
@@ -1400,11 +1651,13 @@ async function t3(){ const id='t3'; if(!(await dgBasics(id))) return; await stop
   await sleep(Math.max(0,A0.L*2*1000-1000)); const q1=await ask('How does the loop sound against the metronome?',['in time','a little late','a little early','off']); dgLine(id,`· the loop against the metronome: ${['in time','a little late','a little early','off'][q1]||'no answer'}`); if(q1<0) return;
   const q0=await ask('When you closed the loop, did it start again the moment you pressed?',['at once','a little late','late']); dgLine(id,`· the loop came back ${['at once','a little late','late'][q0]||'(no answer)'} after the press`); if(q0<0) return;
   if(!(await stepWait('Switch 6 keeps it','',()=>A0.layers[0].state==='accepted',30000))) return; dgLine(id,'✓ kept');
-  const n0=A0.layers.length; if(!(await stepWait('Switch 5, play single notes for one time round','Switch 5 again to stop. The synth version follows a moment later.',()=>A0.layers.length>n0&&!E.rec,90000))) return;
+  const src0=S.src; if(S.src!=='syn'&&!(await stepWait('Switch 5: your guitar becomes the synth','The sound is the one chosen in Sounds.',()=>S.src==='syn',30000))) return;
+  const n0=A0.layers.length; if(!(await stepWait('Switch 1, play single notes for one time round','Switch 1 again to stop. The synth version follows a moment later.',()=>A0.layers.length>n0&&!E.rec&&!A0.layers.some(l=>l._busy),90000))) return;
   const sl=A0.layers[A0.layers.length-1], t0=performance.now(); await waitFor(()=>DG.stop||(sl.notes!=null&&!sl._rendering),20000,50);
   dgLine(id,`${sl.notes!=null?'✓':'✗'} synth layer: ${sl.notes!=null?`${sl.notes} notes, ready ${((performance.now()-t0)/1000).toFixed(1)} s after you closed it`:'not rendered'}`);
   await sleep(A0.L*1000); const q2=await ask('How does the synth layer sound?',['right notes, in time','wrong notes','out of time','did not hear it']); dgLine(id,`· the synth layer: ${['right notes, in time','wrong notes','out of time','not heard'][q2]||'no answer'}`); if(q2<0) return;
   if(!(await stepWait('Switch 6 keeps it','',()=>sl.state==='accepted',30000))) return;
+  if(src0!=='syn'&&!(await stepWait('Switch 5: back to raw guitar','',()=>S.src==='gtr',30000))) return;
   if(!(await stepWait('Switch 2 stops','The print to the TP-7 starts 2 s later (about 30 s).',()=>E.st==='printing',30000))) return;
   if(!(await stepWait('Printing…','',()=>E.st!=='printing',180000))) return; dgLine(id,`${toPrint().length?'✗':'✓'} print: ${E.msg}${E.small?' '+E.small:''}`);
   banner('The TP-7 plays section A','Listen to the loop from the TP-7 itself.'); await tapePlay(0,true); await sleep(A0.L*2.6*1000); await tapeStop(); banner('');
@@ -1412,7 +1665,7 @@ async function t3(){ const id='t3'; if(!(await dgBasics(id))) return; await stop
   await perfReady(); dgLine(id,'Done. This session stays: carry on playing, or tap switch 6 four times for a new one.');
   } finally { diagHide(false); } }
 // the guided test runs with the app's own screens: the diagnostics screen steps aside and comes back after
-function diagHide(on){ const d=$('#diag'); if(!d) return; if(on){ d.hidden=true; DG.hid=true; showTab('Loop'); } else if(DG.hid){ d.hidden=false; DG.hid=false; diagRender(); } }
+function diagHide(on){ const d=$('#diag'); if(!d) return; if(on){ d.hidden=true; DG.hid=true; showTab('Arr'); } else if(DG.hid){ d.hidden=false; DG.hid=false; diagRender(); } }
 
 function diagReport(){ const L=[`Tinebox Loop diagnostics, ${new Date().toLocaleString()}`,`Build ${APP_BUILD}`,`TP-7: ${TP.info?JSON.stringify(TP.info):'no greet reply'}`,
   ctx?`Audio: ${ctx.sampleRate} Hz, ${ctx.destination.maxChannelCount} output channels, base latency ${msTxt(ctx.baseLatency)}, output latency ${msTxt(ctx.outputLatency)}, input ${IN.kind||'closed'}`:'Audio: not started',
@@ -1426,7 +1679,7 @@ function diagReport(){ const L=[`Tinebox Loop diagnostics, ${new Date().toLocale
   if(S.ses){ S.ses.secs.forEach(s=>s.layers.forEach(l=>{ delete l._busy; delete l._rendering; })); E.st=S.ses.secs.length?'stopped':'idle';
     say(S.ses.secs.length?`Session at ${bpmTxt(S.ses.bpm)} bpm, ${S.ses.secs.length} section${S.ses.secs.length>1?'s':''}.`:'Tinebox Loop',S.ses.secs.length?'Connect the TP-7 (Settings), then switch 2 plays. '+pendTxt():'Connect the TP-7 (Settings), then tap switch 6 four times for a session.'); }
   else say('Tinebox Loop','Connect the TP-7 (Settings), then tap switch 6 four times for a session.');
-  showTab('Loop');
+  showTab('Arr');
   // MIDI browsers grant access without a prompt: connect at once (a tap is still needed for audio)
   if(navigator.requestMIDIAccess) setTimeout(()=>{ midiConnect().then(ok=>{ if(ok&&midiReady()&&R.sysex) sxAlive().then(m=>{ if(m) setMidiNote(`TP-7 answers (${m} mode).`); renderAll(); }); }); },300);
   const unlock=()=>{ initAudio(); document.removeEventListener('pointerdown',unlock,true); document.removeEventListener('keydown',unlock,true); };
